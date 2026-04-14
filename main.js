@@ -239,7 +239,7 @@ function render() {
   `).join("");
 
   lineChart(els.benefitChart, rows.map((row) => ({ year: `${row.years}y`, value: row.retrofitVsGas })), "value", "#6bd5bc");
-  lineChart(els.co2Chart, rows.map((row) => ({ year: `${row.years}y`, value: row.gasEmissions - row.retrofitEmissions })), "value", "#d6c65e");
+  lineChart(els.co2Chart, rows.map((row) => ({ year: `${row.years}y`, value: row.gasEmissions - row.retrofitEmissions })), "value", "#ff9f45");
   updateGlobe(rows);
 }
 
@@ -278,14 +278,14 @@ const globe = new THREE.Mesh(
     normalMap: textureLoader.load("./assets/earth_normal_2048.jpg"),
     specularMap: textureLoader.load("./assets/earth_specular_2048.jpg"),
     shininess: 28,
-    specular: new THREE.Color("#6bd5bc"),
+    specular: new THREE.Color("#ff9f45"),
   })
 );
 scene.add(globe);
 
 const glow = new THREE.Mesh(
   new THREE.SphereGeometry(1.62, 96, 96),
-  new THREE.MeshBasicMaterial({ color: "#6bd5bc", transparent: true, opacity: 0.14, wireframe: true })
+  new THREE.MeshBasicMaterial({ color: "#ff9f45", transparent: true, opacity: 0.13, wireframe: true })
 );
 scene.add(glow);
 
@@ -313,7 +313,8 @@ scene.add(arcGroup);
 const light = new THREE.DirectionalLight("#ffffff", 2.2);
 light.position.set(-3, 2.5, 4);
 scene.add(light);
-scene.add(new THREE.AmbientLight("#6bd5bc", 0.64));
+scene.add(new THREE.AmbientLight("#ffb45c", 0.48));
+scene.add(new THREE.HemisphereLight("#6bd5bc", "#ff9f45", 0.32));
 
 function makeArc(angle, height, color) {
   const curve = new THREE.CatmullRomCurve3([
@@ -331,7 +332,7 @@ function updateGlobe(rows) {
   const last = rows.at(-1);
   const arcTarget = Math.min(16, Math.max(4, Math.round((last.gasEmissions - last.retrofitEmissions) / 25)));
   while (arcGroup.children.length < arcTarget) {
-    arcGroup.add(makeArc(Math.random() * Math.PI * 2, 0.7 + Math.random() * 1.1, Math.random() > 0.45 ? "#6bd5bc" : "#d6c65e"));
+    arcGroup.add(makeArc(Math.random() * Math.PI * 2, 0.7 + Math.random() * 1.1, Math.random() > 0.4 ? "#ff9f45" : "#6bd5bc"));
   }
   while (arcGroup.children.length > arcTarget) {
     arcGroup.remove(arcGroup.children.at(-1));
@@ -353,9 +354,9 @@ window.addEventListener("resize", resize);
 function animate() {
   resize();
   globe.rotation.y += 0.0024;
-  glow.rotation.y -= 0.0016;
+  glow.rotation.y -= 0.0022;
   points.rotation.y += 0.0008;
-  arcGroup.rotation.y += 0.003;
+  arcGroup.rotation.y += 0.0042;
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

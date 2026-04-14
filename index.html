@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Retrofit Forecast Analytics</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage" aria-label="Retrofit forecast command view">
+        <canvas id="globe-canvas" aria-label="Interactive emissions globe"></canvas>
+        <div class="brand-rail" aria-label="Project partners">
+          <img src="./assets/logos/blueforce-logo.png" alt="BlueForce Energy" />
+          <span>Fleet Intelligence Lab</span>
+          <img src="./assets/logos/bcit-logo.svg" alt="BCIT" />
+        </div>
+        <div class="mission-status" aria-label="Mission status">
+          <span class="status-dot"></span>
+          <span>BCIT CAPSTONE // BLUEFORCE ENERGY</span>
+          <strong>MODEL: ACTIVE</strong>
+        </div>
+        <div class="stage-copy">
+          <p class="eyebrow">Mission brief // retrofit forecast</p>
+          <h1>Fleet retrofit intelligence.</h1>
+          <p>
+            Compare gasoline, electric, and retrofit pathways with cost/km, emissions, NPV, and breakeven evidence.
+          </p>
+        </div>
+        <div class="signal-strip" aria-label="Model signal summary">
+          <span>Scope: F-150 decision model</span>
+          <span>Signal: cost per kilometre</span>
+          <span>Method: one-variable scenarios</span>
+          <span>Output: breakeven + NPV</span>
+        </div>
+      </section>
+
+      <section class="control-surface" aria-label="Forecast controls">
+        <div class="panel identity-panel">
+          <div>
+            <p class="eyebrow">Operation objective</p>
+            <h2>Make the retrofit business case defensible at sponsor review.</h2>
+          </div>
+          <div class="mission-grid">
+            <article>
+              <span>Mission</span>
+              <strong>Test whether a retrofit pathway can reduce lifecycle fleet cost while supporting commercial decarbonization.</strong>
+            </article>
+            <article>
+              <span>Vision</span>
+              <strong>Turn sponsor assumptions into a transparent model that leaders can interrogate, adjust, and explain.</strong>
+            </article>
+            <article>
+              <span>Capstone role</span>
+              <strong>BCIT students structure the dataset, scenario logic, and open questions for BlueForce Energy.</strong>
+            </article>
+          </div>
+        </div>
+
+        <div class="panel workflow-panel">
+          <p class="eyebrow">Analysis protocol</p>
+          <div class="workflow-steps">
+            <article><strong>1</strong><span>Combined dataset + reference document</span></article>
+            <article><strong>2</strong><span>Transform into cost/km, fuel, maintenance, emissions variables</span></article>
+            <article><strong>3</strong><span>Run one-variable-at-a-time scenario analysis</span></article>
+            <article><strong>4</strong><span>Compare breakeven and NPV over 3, 5, and 10 years</span></article>
+          </div>
+        </div>
+
+        <div class="panel assumption-panel">
+          <div>
+            <p class="eyebrow">Live assumptions</p>
+            <h2>Scenario controls</h2>
+          </div>
+          <label class="select-label">
+            <span>Scenario mode</span>
+            <select id="scenario-mode">
+              <option value="km">Kilometres only</option>
+              <option value="vehicles">Vehicle count only</option>
+              <option value="fuel">Fuel prices only</option>
+              <option value="maintenance">Maintenance only</option>
+              <option value="emissions">Emissions + manufacturing</option>
+            </select>
+          </label>
+          <p class="scenario-note" id="scenario-note">Only annual kilometres should change in this scenario.</p>
+          <label>
+            <span>Annual kilometres</span>
+            <input id="km" type="range" min="5000" max="60000" step="1000" value="20000" />
+            <strong id="km-label">20,000 km</strong>
+          </label>
+          <label>
+            <span>Number of vehicles</span>
+            <input id="fleet" type="range" min="1" max="250" step="1" value="25" />
+            <strong id="fleet-label">25</strong>
+          </label>
+          <label>
+            <span>Gas price</span>
+            <input id="gas-price" type="range" min="1" max="3.5" step="0.05" value="1.8" />
+            <strong id="gas-price-label">$1.80/L</strong>
+          </label>
+          <label>
+            <span>Electricity price</span>
+            <input id="electricity-price" type="range" min="0.08" max="0.45" step="0.01" value="0.14" />
+            <strong id="electricity-price-label">$0.14/kWh</strong>
+          </label>
+          <label>
+            <span>Maintenance multiplier</span>
+            <input id="maintenance" type="range" min="0.5" max="2" step="0.05" value="1" />
+            <strong id="maintenance-label">1.00x</strong>
+          </label>
+          <label>
+            <span>Retrofit service cost</span>
+            <input id="retrofit-cost" type="range" min="35000" max="60000" step="1000" value="50000" />
+            <strong id="retrofit-cost-label">$55,000</strong>
+          </label>
+        </div>
+
+        <div class="panel metric-panel">
+          <p class="eyebrow">10-year fleet signal</p>
+          <div class="metric-grid">
+            <article>
+              <span>Retrofit vs gasoline NPV</span>
+              <strong id="metric-retrofits">$0</strong>
+            </article>
+            <article>
+              <span>Retrofit breakeven</span>
+              <strong id="metric-savings">-</strong>
+            </article>
+            <article>
+              <span>CO2 avoided vs gasoline</span>
+              <strong id="metric-co2">281 t</strong>
+            </article>
+            <article>
+              <span>Retrofit cost / km</span>
+              <strong id="metric-benefit">$2.43M</strong>
+            </article>
+          </div>
+        </div>
+
+        <div class="panel vehicle-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Transformed dataset</p>
+              <h2>Cost per kilometre by truck type</h2>
+            </div>
+            <span>fuel + maintenance</span>
+          </div>
+          <div class="vehicle-grid">
+            <article>
+              <span>Gasoline / used gasoline</span>
+              <strong id="gas-cost-km">$0.00/km</strong>
+              <small id="gas-annual">$0/year</small>
+            </article>
+            <article>
+              <span>New electric</span>
+              <strong id="ev-cost-km">$0.00/km</strong>
+              <small id="ev-annual">$0/year</small>
+            </article>
+            <article>
+              <span>Retrofit</span>
+              <strong id="retrofit-cost-km">$0.00/km</strong>
+              <small id="retrofit-annual">$0/year</small>
+            </article>
+          </div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Net present value</p>
+              <h2>Total cost by horizon</h2>
+            </div>
+            <span id="payback-note">3 / 5 / 10 years</span>
+          </div>
+          <svg id="benefit-chart" role="img" aria-label="Cumulative net benefit chart"></svg>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Impact</p>
+              <h2>Total emissions by horizon</h2>
+            </div>
+            <span>tailpipe + manufacturing</span>
+          </div>
+          <svg id="co2-chart" role="img" aria-label="Annual CO2 avoided chart"></svg>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Breakeven forecast</p>
+              <h2>Starting cost + fuel + maintenance</h2>
+            </div>
+            <span>3 / 5 / 10 years</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Horizon</th>
+                  <th>Gas</th>
+                  <th>Electric</th>
+                  <th>Retrofit</th>
+                  <th>Vs gas</th>
+                  <th>Vs EV</th>
+                </tr>
+              </thead>
+              <tbody id="forecast-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Sponsor questions</p>
+              <h2>Open items to confirm</h2>
+            </div>
+            <span>before final assumptions</span>
+          </div>
+          <ol class="question-list">
+            <li>Does BlueForce buy the ICE truck and resell it, or only offer the retrofit service at $35k-$50k?</li>
+            <li>What are the battery manufacturing emissions for the retrofit kit?</li>
+            <li>Can the project scope stay focused on F-150 only?</li>
+            <li>When vehicle lifespan is extended by 10-15 years, does the battery last that long too?</li>
+            <li>Are there any other costs associated with maintaining the retrofit?</li>
+          </ol>
+        </div>
+
+        <aside class="panel caveat-panel">
+          <p class="eyebrow">Defensible wording</p>
+          <h2>Scenario analysis, not retrofit sales forecast</h2>
+          <p>
+            Keep all assumptions constant except the selected scenario variable. Retrofit adoption and battery emissions stay as assumptions until sponsor data is confirmed.
+          </p>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./main.js?v=7"></script>
+  </body>
+</html>

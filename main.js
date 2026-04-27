@@ -1,365 +1,633 @@
-import * as THREE from "./vendor/three.module.js";
-
-const constants = {
-  discountRate: 0.06,
-  horizons: [3, 5, 10],
-  vehicles: {
-    gas: {
-      label: "Gasoline",
-      startingCost: 45000,
-      fuelPer100: 12.5,
-      maintenancePerKm: 0.085,
-      tailpipeKgPerKm: 0.299,
-      manufacturingTonnes: 8,
-    },
-    ev: {
-      label: "Electric",
-      startingCost: 85000,
-      energyPer100: 30,
-      maintenancePerKm: 0.045,
-      tailpipeKgPerKm: 0,
-      manufacturingTonnes: 12,
-    },
-    retrofit: {
-      label: "Retrofit",
-      startingCost: 50000,
-      energyPer100: 32,
-      maintenancePerKm: 0.05,
-      tailpipeKgPerKm: 0,
-      manufacturingTonnes: 6,
-    },
+const scenarioConfig = {
+  base: {
+    label: "Base case",
+    description: "Default 3, 5, and 10 year totals from the model export.",
+    xLabel: "Year horizon",
+    yLabel: "Total cost (CAD)",
+  },
+  km: {
+    sheet: "Scenario1_KM",
+    parameter: "km_per_year",
+    metric: "cumulative_total_cost",
+    label: "Kilometres",
+    xLabel: "Annual kilometres driven",
+    yLabel: "Cumulative total cost (CAD)",
+    description: "Only annual kilometres change while all other assumptions stay constant.",
+    formatParameter: (value) => `${Number(value).toLocaleString()} km`,
+  },
+  fleet: {
+    sheet: "Scenario2_Fleet",
+    parameter: "fleet_size",
+    metric: "cumulative_total_cost",
+    label: "Fleet size",
+    xLabel: "Number of vehicles",
+    yLabel: "Fleet cumulative total cost (CAD)",
+    description: "Only the number of vehicles changes while per-vehicle assumptions stay constant.",
+    formatParameter: (value) => `${Number(value).toLocaleString()} vehicles`,
+  },
+  fuel: {
+    sheet: "Scenario3_Fuel",
+    parameter: "fuel_multiplier",
+    metric: "cumulative_total_cost",
+    label: "Fuel price",
+    xLabel: "Fuel and electricity price multiplier",
+    yLabel: "Cumulative total cost (CAD)",
+    description: "Only fuel and electricity prices change to test sensitivity to energy prices.",
+    formatParameter: (value) => `${Number(value).toFixed(1)}x`,
+  },
+  maintenance: {
+    sheet: "Scenario4_Maintenance",
+    parameter: "inflation_rate",
+    metric: "cumulative_total_cost",
+    label: "Maintenance",
+    xLabel: "Maintenance inflation",
+    yLabel: "Cumulative total cost (CAD)",
+    description: "Only maintenance inflation changes to test the service-cost assumption.",
+    formatParameter: (value) => `${Math.round(Number(value) * 100)}%`,
+  },
+  capital: {
+    sheet: "Scenario6_Capital",
+    parameter: "capital_cost_multiplier",
+    metric: "cumulative_total_cost",
+    label: "Capital cost",
+    xLabel: "Capital cost multiplier",
+    yLabel: "Cumulative total cost (CAD)",
+    description: "Only purchase or retrofit capital cost changes to test upfront-cost sensitivity.",
+    formatParameter: (value) => `${Number(value).toFixed(1)}x`,
+  },
+  emissions: {
+    sheet: "Scenario5_Individual",
+    parameter: "km_per_year",
+    metric: "cumulative_emissions_tonnes_individual",
+    label: "Emissions",
+    xLabel: "Annual kilometres driven",
+    yLabel: "Cumulative emissions (tonnes CO2e)",
+    description: "Cumulative emissions change as annual kilometres change.",
+    formatParameter: (value) => `${Number(value).toLocaleString()} km`,
   },
 };
 
+const palette = {
+  "F-150 Retrofit": "#8ff0cf",
+  "F-150 ICE": "#ff7070",
+  "F-150 Lightning SR": "#86b4ff",
+  "F-350 Retrofit": "#8ff0cf",
+  "F-350 ICE": "#ff7070",
+  "F-350 Diesel": "#a98cff",
+  "F-450 Retrofit": "#8ff0cf",
+  "F-450 ICE": "#ff7070",
+  "F-450 Diesel": "#a98cff",
+};
+
+const modelNames = {
+  "F-150 Retrofit": "Retrofit",
+  "F-150 ICE": "ICE",
+  "F-150 Lightning SR": "OEM EV",
+  "F-350 Retrofit": "Retrofit",
+  "F-350 ICE": "ICE",
+  "F-350 Diesel": "Diesel",
+  "F-450 Retrofit": "Retrofit",
+  "F-450 ICE": "ICE",
+  "F-450 Diesel": "Diesel",
+};
+
 const state = {
-  scenarioMode: "km",
-  km: 20000,
-  fleet: 25,
-  gasPrice: 1.8,
-  electricityPrice: 0.14,
-  maintenance: 1,
-  retrofitCost: 50000,
+  view: "overview",
+  family: "F-150",
+  scenario: "base",
+  horizon: 10,
 };
 
 const els = {
-  scenarioMode: document.querySelector("#scenario-mode"),
-  scenarioNote: document.querySelector("#scenario-note"),
-  km: document.querySelector("#km"),
-  fleet: document.querySelector("#fleet"),
-  gasPrice: document.querySelector("#gas-price"),
-  electricityPrice: document.querySelector("#electricity-price"),
-  maintenance: document.querySelector("#maintenance"),
-  retrofitCost: document.querySelector("#retrofit-cost"),
-  kmLabel: document.querySelector("#km-label"),
-  fleetLabel: document.querySelector("#fleet-label"),
-  gasPriceLabel: document.querySelector("#gas-price-label"),
-  electricityPriceLabel: document.querySelector("#electricity-price-label"),
-  maintenanceLabel: document.querySelector("#maintenance-label"),
-  retrofitCostLabel: document.querySelector("#retrofit-cost-label"),
-  retrofits: document.querySelector("#metric-retrofits"),
-  savings: document.querySelector("#metric-savings"),
-  co2: document.querySelector("#metric-co2"),
-  benefit: document.querySelector("#metric-benefit"),
-  gasCostKm: document.querySelector("#gas-cost-km"),
-  evCostKm: document.querySelector("#ev-cost-km"),
-  retrofitCostKm: document.querySelector("#retrofit-cost-km"),
-  gasAnnual: document.querySelector("#gas-annual"),
-  evAnnual: document.querySelector("#ev-annual"),
-  retrofitAnnual: document.querySelector("#retrofit-annual"),
-  table: document.querySelector("#forecast-table"),
-  benefitChart: document.querySelector("#benefit-chart"),
-  co2Chart: document.querySelector("#co2-chart"),
+  ambientCanvas: document.querySelector("#ambient-canvas"),
+  content: document.querySelector("#view-content"),
+  familyControl: document.querySelector("#family-control"),
+  scenarioControl: document.querySelector("#scenario-control"),
+  horizonControl: document.querySelector("#horizon-control"),
+  todayLabel: document.querySelector("#today-label"),
+  navButtons: [...document.querySelectorAll(".nav-icon")],
 };
 
+let workbook;
+
 function currency(value) {
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(value) >= 1_000) return `$${Math.round(value / 1_000)}k`;
-  return `$${Math.round(value).toLocaleString()}`;
+  const number = Number(value);
+  if (Math.abs(number) >= 1_000_000) return `$${(number / 1_000_000).toFixed(2)}M`;
+  return `$${Math.round(number).toLocaleString()}`;
 }
 
-function fullCurrency(value) {
-  return `$${Math.round(value).toLocaleString()}`;
+function compactMoney(value) {
+  const number = Number(value);
+  if (Math.abs(number) >= 1_000_000) return `$${(number / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(number) >= 1_000) return `$${Math.round(number / 1_000)}k`;
+  return `$${Math.round(number)}`;
 }
 
-function costPerKm(type) {
-  const vehicle = constants.vehicles[type];
-  const maintenance = vehicle.maintenancePerKm * state.maintenance;
-
-  if (type === "gas") {
-    return (vehicle.fuelPer100 / 100) * state.gasPrice + maintenance;
-  }
-
-  return (vehicle.energyPer100 / 100) * state.electricityPrice + maintenance;
+function tonnes(value) {
+  return `${Number(value).toFixed(Number(value) >= 10 ? 1 : 2)} t`;
 }
 
-function startingCost(type) {
-  return type === "retrofit" ? state.retrofitCost : constants.vehicles[type].startingCost;
+function annualMoney(value) {
+  return `${currency(value)}/yr`;
 }
 
-function annualOperatingCost(type) {
-  return costPerKm(type) * state.km * state.fleet;
+function familyRows() {
+  return workbook.BaseCase_Summary.filter((row) => row.model.startsWith(state.family));
 }
 
-function npvCost(type, years) {
-  let total = startingCost(type) * state.fleet;
-  for (let year = 1; year <= years; year += 1) {
-    total += annualOperatingCost(type) / (1 + constants.discountRate) ** year;
-  }
-  return total;
+function comparisonRows() {
+  return workbook.Comparison_Summary.filter((row) => row.retrofit_model.startsWith(state.family));
 }
 
-function emissions(type, years) {
-  const vehicle = constants.vehicles[type];
-  const manufacturing = vehicle.manufacturingTonnes * state.fleet;
-  const operating = vehicle.tailpipeKgPerKm * state.km * years * state.fleet / 1000;
-  return manufacturing + operating;
+function retrofitRow() {
+  return familyRows().find((row) => row.model.includes("Retrofit"));
 }
 
-function horizonRows() {
-  return constants.horizons.map((years) => {
-    const gas = npvCost("gas", years);
-    const ev = npvCost("ev", years);
-    const retrofit = npvCost("retrofit", years);
+function bestModelForHorizon() {
+  const key = `total_cost_year_${state.horizon}`;
+  return familyRows().reduce((best, row) => (!best || row[key] < best[key] ? row : best), null);
+}
 
-    return {
-      years,
-      gas,
-      ev,
-      retrofit,
-      retrofitVsGas: gas - retrofit,
-      retrofitVsEv: ev - retrofit,
-      gasEmissions: emissions("gas", years),
-      evEmissions: emissions("ev", years),
-      retrofitEmissions: emissions("retrofit", years),
-    };
+function labelFor(model) {
+  return modelNames[model] || model.replace(`${state.family} `, "");
+}
+
+function makeControl(target, name, options, value, onChange) {
+  target.innerHTML = options
+    .map(
+      (option) => `
+        <label class="radio-pill">
+          <input type="radio" name="${name}" value="${option.value}" ${option.value === value ? "checked" : ""} />
+          <span>${option.label}</span>
+        </label>
+      `,
+    )
+    .join("");
+
+  target.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+    input.addEventListener("change", () => onChange(input.value));
   });
 }
 
-function breakevenYears() {
-  const gasDelta = startingCost("retrofit") - startingCost("gas");
-  const annualSavings = costPerKm("gas") * state.km - costPerKm("retrofit") * state.km;
-  if (annualSavings <= 0) return null;
-  return Math.max(gasDelta / annualSavings, 0);
+function renderControls() {
+  makeControl(
+    els.familyControl,
+    "family",
+    [
+      { value: "F-150", label: "F-150" },
+      { value: "F-350", label: "F-350" },
+      { value: "F-450", label: "F-450" },
+    ],
+    state.family,
+    (value) => {
+      state.family = value;
+      render();
+    },
+  );
+
+  makeControl(
+    els.scenarioControl,
+    "scenario",
+    [
+      { value: "base", label: "Base" },
+      { value: "km", label: "KM" },
+      { value: "fleet", label: "Fleet" },
+      { value: "fuel", label: "Fuel" },
+      { value: "maintenance", label: "Maint." },
+      { value: "capital", label: "Capital" },
+      { value: "emissions", label: "Emissions" },
+    ],
+    state.scenario,
+    (value) => {
+      state.scenario = value;
+      state.view = value === "emissions" ? "emissions" : "scenarios";
+      render();
+    },
+  );
+
+  makeControl(
+    els.horizonControl,
+    "horizon",
+    [
+      { value: "3", label: "3 Year" },
+      { value: "5", label: "5 Year" },
+      { value: "10", label: "10 Year" },
+    ],
+    String(state.horizon),
+    (value) => {
+      state.horizon = Number(value);
+      render();
+    },
+  );
 }
 
-function lineChart(svg, rows, key, color) {
-  const ns = "http://www.w3.org/2000/svg";
-  const width = 960;
-  const height = 360;
-  const pad = 48;
-  const values = rows.map((row) => row[key]);
-  const min = Math.min(0, ...values);
-  const max = Math.max(...values) || 1;
-  const x = (index) => pad + (index / (rows.length - 1)) * (width - pad * 2);
-  const y = (value) => height - pad - ((value - min) / (max - min || 1)) * (height - pad * 2);
-  const points = rows.map((row, index) => `${x(index)},${y(row[key])}`).join(" ");
-  const area = `${pad},${height - pad} ${points} ${width - pad},${height - pad}`;
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.replaceChildren();
+function heroMetricsHtml() {
+  const best = bestModelForHorizon();
+  const retrofit = retrofitRow();
+  const comparison = comparisonRows().find((row) => row.comparison.includes("ICE"));
+  const cards = [
+    [`${state.horizon} year lowest cost`, labelFor(best.model), `${state.family} family`],
+    ["Retrofit purchase price", currency(retrofit.purchase_price), "Base case input"],
+    ["Annual savings vs ICE", comparison ? annualMoney(comparison.annual_operating_savings) : "n/a", "Operating cost"],
+  ];
 
-  const add = (tag, attrs, text = "") => {
+  return `<div class="hero-metrics">${cards.map(([label, value, note]) => statCard(label, value, note)).join("")}</div>`;
+}
+
+function insightHtml() {
+  const comparison = comparisonRows().find((row) => row.comparison.includes("ICE"));
+  const other = comparisonRows().find((row) => !row.comparison.includes("ICE"));
+  const retrofit = retrofitRow();
+  const savingsKey = `savings_year_${state.horizon}`;
+  const emissionsKey = `emissions_avoided_year_${state.horizon}`;
+  const cards = [
+    [`${state.horizon} year winner`, labelFor(bestModelForHorizon().model), "Lowest total cost"],
+    ["Retrofit annual operating cost", annualMoney(retrofit.annual_operating_cost), "Base case"],
+    ["Retrofit savings vs ICE", comparison ? compactMoney(comparison[savingsKey]) : "n/a", `${state.horizon} year total`],
+    ["Emissions avoided vs ICE", comparison ? tonnes(comparison[emissionsKey]) : "n/a", `${state.horizon} year total`],
+    [other ? `Savings vs ${labelFor(other.comparison_model)}` : "Alternate savings", other ? compactMoney(other[savingsKey]) : "n/a", `${state.horizon} year total`],
+  ];
+  return `<div class="stat-grid">${cards.map(([label, value, note]) => statCard(label, value, note)).join("")}</div>`;
+}
+
+function statCard(label, value, note) {
+  return `<article class="sub-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></article>`;
+}
+
+function vehiclesHtml() {
+  const horizonKey = `total_cost_year_${state.horizon}`;
+  return `
+    <div class="vehicle-grid">
+      ${familyRows()
+        .map(
+          (row) => `
+            <article class="pill-card">
+              <div class="vehicle-head">
+                <span class="vehicle-dot" style="--dot:${palette[row.model]}"></span>
+                <div><h3>${labelFor(row.model)}</h3><p class="muted">${row.model}</p></div>
+              </div>
+              <dl>
+                <div><dt>Purchase price</dt><dd>${currency(row.purchase_price)}</dd></div>
+                <div><dt>Annual operating</dt><dd>${annualMoney(row.annual_operating_cost)}</dd></div>
+                <div><dt>${state.horizon} year cost</dt><dd>${currency(row[horizonKey])}</dd></div>
+                <div><dt>10 year emissions</dt><dd>${tonnes(row.cumulative_emissions_year_10)}</dd></div>
+              </dl>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function comparisonsHtml() {
+  const savingsKey = `savings_year_${state.horizon}`;
+  const emissionsKey = `emissions_avoided_year_${state.horizon}`;
+  return `
+    <div class="comparison-list">
+      ${comparisonRows()
+        .map(
+          (row) => `
+            <article class="list-card">
+              <div>
+                <h3>${row.comparison}</h3>
+                <p>${row.retrofit_model} against ${row.comparison_model}</p>
+              </div>
+              <span>${annualMoney(row.annual_operating_savings)} operating savings</span>
+              <strong>${currency(row[savingsKey])}</strong>
+              <small>${tonnes(row[emissionsKey])} emissions avoided</small>
+            </article>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function methodHtml() {
+  const active = scenarioConfig[state.scenario];
+  const rows = [
+    "Input: all_scenarios_export_final.xlsx converted into app-ready JSON.",
+    `Truck family: ${state.family}.`,
+    `Scenario view: ${active.label}.`,
+    `Displayed result horizon: ${state.horizon} years.`,
+    state.scenario === "emissions"
+      ? "Chart metric: cumulative emissions in tonnes CO2e."
+      : "Chart metric: cumulative total cost in CAD.",
+  ];
+  return `<div class="method-list">${rows.map((row) => `<p>${row}</p>`).join("")}</div>`;
+}
+
+function tableHtml() {
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>3 Year Cost</th>
+            <th>5 Year Cost</th>
+            <th>10 Year Cost</th>
+            <th>10 Year Emissions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${familyRows()
+            .map(
+              (row) => `
+                <tr>
+                  <td>${labelFor(row.model)}</td>
+                  <td>${currency(row.total_cost_year_3)}</td>
+                  <td>${currency(row.total_cost_year_5)}</td>
+                  <td>${currency(row.total_cost_year_10)}</td>
+                  <td>${tonnes(row.cumulative_emissions_year_10)}</td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function chartModuleHtml(title = "Scenario performance") {
+  const active = scenarioConfig[state.scenario];
+  return `
+    <section class="glass-module chart-module">
+      <div class="module-head">
+        <div><p class="eyebrow">Scenario Analysis</p><h2>${title}</h2></div>
+        <button class="more-button" type="button" aria-label="Chart options">...</button>
+      </div>
+      <p class="module-copy">${active.description}</p>
+      <svg id="scenario-chart" role="img" aria-label="Scenario analysis chart"></svg>
+      <p class="module-note">${state.scenario === "base" ? `Reading exported base-case totals for ${state.family}.` : `Showing the ${state.horizon} year result while only ${active.label.toLowerCase()} changes.`}</p>
+    </section>
+  `;
+}
+
+function renderView() {
+  if (state.view === "overview") {
+    els.content.innerHTML = `
+      ${chartModuleHtml()}
+      <section class="glass-module metric-module">${heroMetricsHtml()}</section>
+      <section class="glass-module metric-module">${insightHtml()}</section>
+      <section class="glass-module vehicle-module"><div class="module-head"><div><p class="eyebrow">Base Case</p><h2>Vehicle pathways</h2></div><p class="module-note">Showing ${state.horizon} year totals for ${state.family} pathways.</p></div>${vehiclesHtml()}</section>
+      <section class="glass-module comparison-module"><div class="module-head"><div><p class="eyebrow">Comparison Summary</p><h2>Retrofit edge</h2></div></div>${comparisonsHtml()}</section>
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Horizon Table</p><h2>3, 5, and 10 year totals</h2></div></div>${tableHtml()}</section>
+    `;
+  }
+
+  if (state.view === "scenarios") {
+    els.content.innerHTML = `
+      ${chartModuleHtml("Sensitivity analysis")}
+      <section class="glass-module metric-module">${insightHtml()}</section>
+      <section class="glass-module method-module"><div class="module-head"><div><p class="eyebrow">Method</p><h2>What changed</h2></div></div>${methodHtml()}</section>
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Pathways</p><h2>Base case reference</h2></div></div>${vehiclesHtml()}</section>
+    `;
+  }
+
+  if (state.view === "vehicles") {
+    els.content.innerHTML = `
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Vehicle Comparison</p><h2>${state.family} pathways</h2></div></div>${vehiclesHtml()}</section>
+      <section class="glass-module comparison-module"><div class="module-head"><div><p class="eyebrow">Retrofit Edge</p><h2>Savings summary</h2></div></div>${comparisonsHtml()}</section>
+      <section class="glass-module method-module"><div class="module-head"><div><p class="eyebrow">Key Metrics</p><h2>Decision signal</h2></div></div>${insightHtml()}</section>
+    `;
+  }
+
+  if (state.view === "emissions") {
+    const priorScenario = state.scenario;
+    state.scenario = "emissions";
+    els.content.innerHTML = `
+      ${chartModuleHtml("Emissions profile")}
+      <section class="glass-module metric-module">${insightHtml()}</section>
+      <section class="glass-module method-module"><div class="module-head"><div><p class="eyebrow">Method</p><h2>Emissions logic</h2></div></div>${methodHtml()}</section>
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Vehicle emissions</p><h2>10 year output</h2></div></div>${vehiclesHtml()}</section>
+    `;
+    state.scenario = priorScenario === "emissions" ? "emissions" : priorScenario;
+  }
+
+  if (state.view === "method") {
+    els.content.innerHTML = `
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Method</p><h2>Model inputs and assumptions</h2></div></div>${methodHtml()}</section>
+      <section class="glass-module vehicle-module"><div class="module-head"><div><p class="eyebrow">Base Case</p><h2>Vehicle pathways</h2></div></div>${vehiclesHtml()}</section>
+      <section class="glass-module comparison-module"><div class="module-head"><div><p class="eyebrow">Comparison</p><h2>Retrofit edge</h2></div></div>${comparisonsHtml()}</section>
+    `;
+  }
+
+  if (state.view === "table") {
+    els.content.innerHTML = `
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Horizon Table</p><h2>3, 5, and 10 year totals</h2></div></div>${tableHtml()}</section>
+      <section class="glass-module wide-module"><div class="module-head"><div><p class="eyebrow">Vehicle detail</p><h2>${state.family} pathways</h2></div></div>${vehiclesHtml()}</section>
+    `;
+  }
+
+  renderScenarioChart();
+}
+
+function buildBaseSeries() {
+  return {
+    xValues: [3, 5, 10],
+    xLabel: "Year horizon",
+    yLabel: "Total cost (CAD)",
+    formatX: (value) => `${value}y`,
+    formatValue: currency,
+    series: familyRows().map((row) => ({
+      label: labelFor(row.model),
+      color: palette[row.model],
+      values: [row.total_cost_year_3, row.total_cost_year_5, row.total_cost_year_10],
+    })),
+  };
+}
+
+function buildScenarioSeries() {
+  const active = scenarioConfig[state.scenario === "base" ? "km" : state.scenario];
+  const rows = workbook[active.sheet]
+    .filter((row) => row.model.startsWith(state.family))
+    .filter((row) => Number(row.year) === state.horizon);
+  const xValues = [...new Set(rows.map((row) => Number(row[active.parameter])))]
+    .filter((value) => !Number.isNaN(value))
+    .sort((a, b) => a - b);
+
+  return {
+    xValues,
+    xLabel: active.xLabel,
+    yLabel: active.yLabel,
+    formatX: active.formatParameter,
+    formatValue: active.metric.includes("emissions") ? tonnes : currency,
+    series: familyRows().map((baseRow) => ({
+      label: labelFor(baseRow.model),
+      color: palette[baseRow.model],
+      values: xValues.map((xValue) => {
+        const match = rows.find((row) => row.model === baseRow.model && Number(row[active.parameter]) === xValue);
+        return match ? Number(match[active.metric]) : null;
+      }),
+    })),
+  };
+}
+
+function renderLineChart(svg, config) {
+  if (!svg) return;
+  const ns = "http://www.w3.org/2000/svg";
+  const width = 1040;
+  const height = 420;
+  const padTop = 34;
+  const padRight = 32;
+  const padBottom = 62;
+  const padLeft = 76;
+  const chartWidth = width - padLeft - padRight;
+  const chartHeight = height - padTop - padBottom;
+  const values = config.series.flatMap((series) => series.values).filter((value) => typeof value === "number");
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const yMin = min > 0 ? min * 0.92 : min * 1.08;
+  const yMax = max * 1.05 || 1;
+  const xCount = Math.max(config.xValues.length - 1, 1);
+  const xScale = (index) => padLeft + (index / xCount) * chartWidth;
+  const yScale = (value) => padTop + chartHeight - ((value - yMin) / (yMax - yMin || 1)) * chartHeight;
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.innerHTML = "";
+
+  const add = (tag, attrs, text) => {
     const node = document.createElementNS(ns, tag);
     Object.entries(attrs).forEach(([name, value]) => node.setAttribute(name, value));
-    if (text) node.textContent = text;
+    if (text !== undefined) node.textContent = text;
     svg.appendChild(node);
     return node;
   };
 
-  add("rect", { x: 0, y: 0, width, height, rx: 8, fill: "#080a0a" });
-  add("rect", { x: 1, y: 1, width: width - 2, height: height - 2, rx: 8, fill: "none", stroke: color, "stroke-width": 1, opacity: 0.35, "stroke-dasharray": "2 8" });
-  for (let gx = pad; gx <= width - pad; gx += 28) {
-    for (let gy = pad; gy <= height - pad; gy += 22) {
-      add("circle", { cx: gx, cy: gy, r: 0.9, fill: "#aaabac", opacity: 0.22 });
-    }
+  add("rect", { x: 0, y: 0, width, height, rx: 8, fill: "rgba(255,255,255,0.08)" });
+
+  for (let step = 0; step <= 4; step += 1) {
+    const value = yMin + ((yMax - yMin) * step) / 4;
+    const y = yScale(value);
+    add("line", { x1: padLeft, y1: y, x2: width - padRight, y2: y, stroke: "rgba(255,255,255,0.18)", "stroke-width": 1 });
+    add("text", { x: padLeft - 12, y: y + 4, "text-anchor": "end", fill: "rgba(255,255,255,0.84)", "font-size": 12 }, config.formatValue(value));
   }
-  add("polygon", { points: area, fill: color, opacity: 0.12 });
-  [0.25, 0.5, 0.75].forEach((n) => {
-    const gy = pad + n * (height - pad * 2);
-    add("line", { x1: pad, y1: gy, x2: width - pad, y2: gy, stroke: "#484848", "stroke-width": 1, "stroke-dasharray": "2 8" });
+
+  config.xValues.forEach((xValue, index) => {
+    const x = xScale(index);
+    add("line", { x1: x, y1: padTop, x2: x, y2: padTop + chartHeight, stroke: "rgba(255,255,255,0.12)", "stroke-width": 1 });
+    add("text", { x, y: height - 24, "text-anchor": "middle", fill: "rgba(255,255,255,0.86)", "font-size": 12 }, config.formatX(xValue));
   });
-  add("line", { x1: pad, y1: height - pad, x2: width - pad, y2: height - pad, stroke: "#aaabac", "stroke-width": 1, opacity: 0.36, "stroke-dasharray": "2 7" });
-  add("polyline", { points, fill: "none", stroke: color, "stroke-width": 4, "stroke-linecap": "round", "stroke-linejoin": "round" });
-  rows.forEach((row, index) => {
-    add("circle", { cx: x(index), cy: y(row[key]), r: 7, fill: "#080a0a", stroke: color, "stroke-width": 2.2 });
-    add("circle", { cx: x(index), cy: y(row[key]), r: 2.2, fill: color });
-    if (index % 2 === 0) {
-      add("text", { x: x(index), y: height - 14, "text-anchor": "middle", fill: "#aeb8ae", "font-size": 14 }, row.year);
-    }
+
+  config.series.forEach((series) => {
+    const points = series.values
+      .map((value, index) => (typeof value === "number" ? { x: xScale(index), y: yScale(value) } : null))
+      .filter(Boolean);
+    add("polyline", {
+      points: points.map((point) => `${point.x},${point.y}`).join(" "),
+      fill: "none",
+      stroke: series.color,
+      "stroke-width": 3.2,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    });
+    points.forEach((point) => {
+      add("circle", { cx: point.x, cy: point.y, r: 5, fill: series.color });
+      add("circle", { cx: point.x, cy: point.y, r: 10, fill: series.color, opacity: 0.16 });
+    });
+  });
+
+  config.series.forEach((series, index) => {
+    const x = padLeft + index * 180;
+    add("circle", { cx: x, cy: 18, r: 5, fill: series.color });
+    add("text", { x: x + 12, y: 22, fill: "rgba(255,255,255,0.9)", "font-size": 12 }, series.label);
+  });
+
+  add("text", { x: width / 2, y: height - 4, "text-anchor": "middle", fill: "rgba(255,255,255,0.82)", "font-size": 13 }, config.xLabel);
+}
+
+function renderScenarioChart() {
+  const chart = document.querySelector("#scenario-chart");
+  const scenarioForChart = state.view === "emissions" ? "emissions" : state.scenario;
+  const originalScenario = state.scenario;
+  state.scenario = scenarioForChart;
+  renderLineChart(chart, state.scenario === "base" ? buildBaseSeries() : buildScenarioSeries());
+  state.scenario = originalScenario;
+}
+
+function renderNav() {
+  els.navButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === state.view);
   });
 }
 
 function render() {
-  const rows = horizonRows();
-  const last = rows.at(-1);
-  const breakeven = breakevenYears();
-  const scenarioNotes = {
-    km: "Only annual kilometres should change in this scenario.",
-    vehicles: "Only the number of vehicles should change in this scenario.",
-    fuel: "Only gas and electricity prices should change in this scenario.",
-    maintenance: "Only the maintenance multiplier should change in this scenario.",
-    emissions: "Emissions per kilometre and manufacturing emissions are included in the comparison.",
-  };
-
-  els.scenarioNote.textContent = scenarioNotes[state.scenarioMode];
-  els.kmLabel.textContent = `${state.km.toLocaleString()} km`;
-  els.fleetLabel.textContent = state.fleet.toLocaleString();
-  els.gasPriceLabel.textContent = `$${state.gasPrice.toFixed(2)}/L`;
-  els.electricityPriceLabel.textContent = `$${state.electricityPrice.toFixed(2)}/kWh`;
-  els.maintenanceLabel.textContent = `${state.maintenance.toFixed(2)}x`;
-  els.retrofitCostLabel.textContent = fullCurrency(state.retrofitCost);
-
-  const gasAnnual = annualOperatingCost("gas");
-  const evAnnual = annualOperatingCost("ev");
-  const retrofitAnnual = annualOperatingCost("retrofit");
-  const gasKm = costPerKm("gas");
-  const evKm = costPerKm("ev");
-  const retrofitKm = costPerKm("retrofit");
-
-  els.gasCostKm.textContent = `$${gasKm.toFixed(2)}/km`;
-  els.evCostKm.textContent = `$${evKm.toFixed(2)}/km`;
-  els.retrofitCostKm.textContent = `$${retrofitKm.toFixed(2)}/km`;
-  els.gasAnnual.textContent = `${fullCurrency(gasAnnual)}/year`;
-  els.evAnnual.textContent = `${fullCurrency(evAnnual)}/year`;
-  els.retrofitAnnual.textContent = `${fullCurrency(retrofitAnnual)}/year`;
-
-  els.retrofits.textContent = currency(last.retrofitVsGas);
-  els.savings.textContent = breakeven === null ? "No break" : `${breakeven.toFixed(1)} yr`;
-  els.co2.textContent = `${Math.round(last.gasEmissions - last.retrofitEmissions).toLocaleString()} t`;
-  els.benefit.textContent = `$${retrofitKm.toFixed(2)}/km`;
-
-  els.table.innerHTML = rows.map((row) => `
-    <tr>
-      <td>${row.years} years</td>
-      <td>${currency(row.gas)}</td>
-      <td>${currency(row.ev)}</td>
-      <td>${currency(row.retrofit)}</td>
-      <td>${currency(row.retrofitVsGas)}</td>
-      <td>${currency(row.retrofitVsEv)}</td>
-    </tr>
-  `).join("");
-
-  lineChart(els.benefitChart, rows.map((row) => ({ year: `${row.years}y`, value: row.retrofitVsGas })), "value", "#6bd5bc");
-  lineChart(els.co2Chart, rows.map((row) => ({ year: `${row.years}y`, value: row.gasEmissions - row.retrofitEmissions })), "value", "#ff9f45");
-  updateGlobe(rows);
+  renderControls();
+  renderNav();
+  renderView();
 }
 
-for (const [key, input] of Object.entries({
-  km: els.km,
-  fleet: els.fleet,
-  gasPrice: els.gasPrice,
-  electricityPrice: els.electricityPrice,
-  maintenance: els.maintenance,
-  retrofitCost: els.retrofitCost,
-})) {
-  input.addEventListener("input", () => {
-    state[key] = Number(input.value);
-    render();
+function resizeCanvas() {
+  const canvas = els.ambientCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(window.innerWidth * dpr);
+  canvas.height = Math.floor(window.innerHeight * dpr);
+  canvas.style.width = `${window.innerWidth}px`;
+  canvas.style.height = `${window.innerHeight}px`;
+}
+
+function startAmbientBackground() {
+  const canvas = els.ambientCanvas;
+  const ctx = canvas.getContext("2d");
+
+  function draw(time) {
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "rgba(245,250,246,0.22)");
+    gradient.addColorStop(0.5, "rgba(165,182,178,0.08)");
+    gradient.addColorStop(1, "rgba(178,144,110,0.16)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    const wave = Math.sin(time * 0.00045) * 40;
+    const sheen = ctx.createLinearGradient(wave, 0, width + wave, height);
+    sheen.addColorStop(0, "rgba(255,255,255,0.18)");
+    sheen.addColorStop(0.48, "rgba(255,255,255,0.03)");
+    sheen.addColorStop(0.75, "rgba(179,144,110,0.14)");
+    sheen.addColorStop(1, "rgba(255,255,255,0.08)");
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+
+    requestAnimationFrame(draw);
+  }
+
+  resizeCanvas();
+  requestAnimationFrame(draw);
+}
+
+function initNav() {
+  els.navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.view = button.dataset.view;
+      if (state.view === "emissions") state.scenario = "emissions";
+      render();
+    });
   });
 }
 
-els.scenarioMode.addEventListener("change", () => {
-  state.scenarioMode = els.scenarioMode.value;
+async function init() {
+  const response = await fetch("./assets/scenario-data.json");
+  workbook = await response.json();
+  els.todayLabel.textContent = new Intl.DateTimeFormat("en-CA", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date());
+  initNav();
+  startAmbientBackground();
   render();
+  window.addEventListener("resize", resizeCanvas);
+}
+
+init().catch((error) => {
+  console.error("App failed to initialize", error);
 });
-
-const canvas = document.querySelector("#globe-canvas");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-camera.position.set(0, 0.08, 4.45);
-
-const textureLoader = new THREE.TextureLoader();
-const globe = new THREE.Mesh(
-  new THREE.SphereGeometry(1.55, 96, 96),
-  new THREE.MeshPhongMaterial({
-    map: textureLoader.load("./assets/earth_atmos_2048.jpg"),
-    normalMap: textureLoader.load("./assets/earth_normal_2048.jpg"),
-    specularMap: textureLoader.load("./assets/earth_specular_2048.jpg"),
-    shininess: 28,
-    specular: new THREE.Color("#ff9f45"),
-  })
-);
-scene.add(globe);
-
-const glow = new THREE.Mesh(
-  new THREE.SphereGeometry(1.62, 96, 96),
-  new THREE.MeshBasicMaterial({ color: "#ff9f45", transparent: true, opacity: 0.13, wireframe: true })
-);
-scene.add(glow);
-
-const pointsGeometry = new THREE.BufferGeometry();
-const pointCount = 900;
-const positions = new Float32Array(pointCount * 3);
-for (let i = 0; i < pointCount; i += 1) {
-  const radius = 2.15 + Math.random() * 1.3;
-  const theta = Math.random() * Math.PI * 2;
-  const phi = Math.acos(2 * Math.random() - 1);
-  positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-  positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-  positions[i * 3 + 2] = radius * Math.cos(phi);
-}
-pointsGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-const points = new THREE.Points(
-  pointsGeometry,
-  new THREE.PointsMaterial({ size: 0.014, color: "#d9fff1", transparent: true, opacity: 0.5 })
-);
-scene.add(points);
-
-const arcGroup = new THREE.Group();
-scene.add(arcGroup);
-
-const light = new THREE.DirectionalLight("#ffffff", 2.2);
-light.position.set(-3, 2.5, 4);
-scene.add(light);
-scene.add(new THREE.AmbientLight("#ffb45c", 0.48));
-scene.add(new THREE.HemisphereLight("#6bd5bc", "#ff9f45", 0.32));
-
-function makeArc(angle, height, color) {
-  const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(Math.cos(angle) * 1.58, Math.sin(angle) * 0.45, Math.sin(angle) * 1.1),
-    new THREE.Vector3(Math.cos(angle + 0.55) * 1.9, height, Math.sin(angle + 0.55) * 1.35),
-    new THREE.Vector3(Math.cos(angle + 1.1) * 1.58, -Math.sin(angle) * 0.55, Math.sin(angle + 1.1) * 1.1),
-  ]);
-  return new THREE.Line(
-    new THREE.TubeGeometry(curve, 40, 0.006, 6, false),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.72 })
-  );
-}
-
-function updateGlobe(rows) {
-  const last = rows.at(-1);
-  const arcTarget = Math.min(16, Math.max(4, Math.round((last.gasEmissions - last.retrofitEmissions) / 25)));
-  while (arcGroup.children.length < arcTarget) {
-    arcGroup.add(makeArc(Math.random() * Math.PI * 2, 0.7 + Math.random() * 1.1, Math.random() > 0.4 ? "#ff9f45" : "#6bd5bc"));
-  }
-  while (arcGroup.children.length > arcTarget) {
-    arcGroup.remove(arcGroup.children.at(-1));
-  }
-  arcGroup.children.forEach((arc, index) => {
-    arc.material.opacity = 0.32 + Math.min(0.46, (last.gasEmissions - last.retrofitEmissions) / 1000) + (index % 3) * 0.04;
-  });
-}
-
-function resize() {
-  const { clientWidth, clientHeight } = canvas;
-  renderer.setSize(clientWidth, clientHeight, false);
-  camera.aspect = clientWidth / Math.max(clientHeight, 1);
-  camera.updateProjectionMatrix();
-}
-
-window.addEventListener("resize", resize);
-
-function animate() {
-  resize();
-  globe.rotation.y += 0.0024;
-  glow.rotation.y -= 0.0022;
-  points.rotation.y += 0.0008;
-  arcGroup.rotation.y += 0.0042;
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
-
-render();
-animate();

@@ -1,5 +1,34 @@
-# BlueForce Retrofit Analytics
+# BlueForce Retrofit Analytics Dashboard
 
-Interactive BCIT capstone dashboard for comparing gasoline, electric, and retrofit fleet scenarios across cost per kilometre, net present value, breakeven, and emissions.
+Client-facing React dashboard for the BCIT BlueForce Energy capstone forecasting model.
 
-This is a static web app. Open `index.html` locally, or publish the repository with GitHub Pages.
+## Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL Vite prints in the terminal.
+
+## Production Build
+
+```bash
+npm run build
+```
+
+Vercel can deploy this project directly from GitHub using the default Vite settings:
+
+- Framework preset: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+
+## Data
+
+The dashboard reads exported forecasting data from:
+
+```text
+assets/scenario-data.json
+```
+
+The app UI should not change model logic or source data structures without sponsor/team review.

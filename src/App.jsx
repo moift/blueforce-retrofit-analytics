@@ -218,6 +218,16 @@ function Term({ label, help }) {
   return <dt>{label}{help && <HelpTip text={help} />}</dt>;
 }
 
+function CrystalArc() {
+  return (
+    <div className="crystal-arc" aria-hidden="true">
+      {Array.from({ length: 18 }).map((_, index) => (
+        <span key={index} style={{ "--i": index }} />
+      ))}
+    </div>
+  );
+}
+
 function VehicleIllustration({ type, family }) {
   const accent = palette[type] || "#ffffff";
   const isElectric = type === "Retrofit" || type === "OEM EV";
@@ -509,6 +519,38 @@ function App() {
           </div>
         </header>
 
+        <section className="reference-hero" aria-label="BlueForce retrofit scenario hero">
+          <div className="hero-copy">
+            <p className="eyebrow">BlueForce Energy x BCIT Capstone</p>
+            <h2>Forecast Every Retrofit, Right on Time, for Less Fleet Cost</h2>
+            <p>
+              Compare purchase cost, operating cost, lifecycle emissions, and scenario risk across F-150, F-350, and F-450 pathways.
+            </p>
+            <div className="hero-actions">
+              <button type="button" onClick={() => setActiveView("scenario")}>Explore scenarios</button>
+              <span>{vehicle} / {selectedRow.type} / {horizon} years</span>
+            </div>
+          </div>
+
+          <div className="hero-object">
+            <CrystalArc />
+            <VehicleIllustration key={`${vehicle}-${selectedType}-hero`} type={selectedRow.type} family={vehicle} />
+            <div className="hero-readout" aria-label="Selected retrofit summary">
+              <span><b>{currency(selectedRow[horizonCostKey])}</b>{horizon} year cost</span>
+              <span><b>{tonnes(selectedRow[horizonLifecycleEmissionsKey])}</b>lifecycle CO2e</span>
+              <span><b>{currency(selectedRow.annual_operating_cost)}</b>annual operating</span>
+            </div>
+          </div>
+
+          <div className="partner-strip" aria-label="Project partners">
+            <span>BlueForce Energy</span>
+            <span>BCIT Applied Research</span>
+            <span>Lifecycle CO2e</span>
+            <span>Scenario Forecast</span>
+            <span>Fleet Retrofit</span>
+          </div>
+        </section>
+
         <section className="control-grid">
           <SegmentedControl
             label="Vehicle family"
@@ -582,7 +624,7 @@ function App() {
                     <span>{SCENARIOS[scenario].fullLabel}</span>
                   </div>
                   <h2>{selectedRow.model}</h2>
-                  <VehicleIllustration type={selectedRow.type} family={vehicle} />
+                  <VehicleIllustration key={`${vehicle}-${selectedType}-stage`} type={selectedRow.type} family={vehicle} />
                   <div className="stage-readout">
                     <div>
                       <p className="eyebrow">{horizon} year cost</p>
@@ -614,9 +656,9 @@ function App() {
                 <SectionTitle eyebrow="Cost Comparison" title={`${vehicle} pathway cost`} action={<span className="tiny-label">Selected horizon cumulative cost</span>} help={explanations.cumulativeCost} />
                 <ResponsiveContainer width="100%" height={310}>
                   <BarChart data={costChart} margin={{ top: 22, right: 18, left: 4, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.16)" vertical={false} />
-                    <XAxis dataKey="type" stroke="rgba(255,255,255,.84)" tickLine={false} axisLine={false} />
-                    <YAxis stroke="rgba(255,255,255,.78)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
+                    <CartesianGrid stroke="rgba(75,91,108,0.14)" vertical={false} />
+                    <XAxis dataKey="type" stroke="rgba(58,70,86,.74)" tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(58,70,86,.68)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
                     <Tooltip content={<GlassTooltip formatter={currency} note={explanations.cumulativeCost} />} />
                     <Bar dataKey="selected" radius={[18, 18, 8, 8]}>
                       {costChart.map((entry) => (
@@ -643,9 +685,9 @@ function App() {
                 <SectionTitle eyebrow="Scenario Analysis" title={SCENARIOS[scenario].fullLabel || "Base case"} action={<span className="tiny-label">{SCENARIOS[scenario].description}</span>} help={explanations.scenario} />
                 <ResponsiveContainer width="100%" height={290}>
                   <LineChart data={sensitivityChart} margin={{ top: 20, right: 18, left: 4, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.16)" vertical={false} />
-                    <XAxis dataKey="label" stroke="rgba(255,255,255,.84)" tickLine={false} axisLine={false} />
-                    <YAxis stroke="rgba(255,255,255,.78)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
+                    <CartesianGrid stroke="rgba(75,91,108,0.14)" vertical={false} />
+                    <XAxis dataKey="label" stroke="rgba(58,70,86,.74)" tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(58,70,86,.68)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
                     <Tooltip content={<GlassTooltip formatter={currency} note={SCENARIOS[scenario].description} />} />
                     {["Retrofit", "ICE", "OEM EV", "Diesel"].map((key) => (
                       <Line key={key} type="monotone" dataKey={key} stroke={palette[key]} strokeWidth={key === selectedType ? 5 : 3.2} dot={{ r: key === selectedType ? 6 : 4, strokeWidth: 2 }} activeDot={{ r: 7 }} connectNulls />
@@ -658,11 +700,11 @@ function App() {
                 <SectionTitle eyebrow="Operating Cost" title="Annual operating total" help={explanations.operatingCost} />
                 <ResponsiveContainer width="100%" height={230}>
                   <BarChart data={operatingCostData} margin={{ top: 18, right: 18, left: 4, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.12)" vertical={false} />
-                    <XAxis dataKey="type" stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} />
-                    <YAxis stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
+                    <CartesianGrid stroke="rgba(75,91,108,0.14)" vertical={false} />
+                    <XAxis dataKey="type" stroke="rgba(58,70,86,.64)" tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(58,70,86,.64)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
                     <Tooltip content={<GlassTooltip formatter={currency} note={explanations.operatingCost} />} />
-                    <Bar dataKey="annual" fill="#ffffff" opacity={0.76} radius={[14, 14, 6, 6]} />
+                    <Bar dataKey="annual" fill="#5b748f" opacity={0.72} radius={[14, 14, 6, 6]} />
                   </BarChart>
                 </ResponsiveContainer>
                 <p className="data-note">Fuel/electricity vs maintenance split is marked pending until those columns are available in the exported model data.</p>
@@ -683,9 +725,9 @@ function App() {
                 <SectionTitle eyebrow="Emissions Panel" title="Lifecycle emissions breakdown" help={explanations.lifecycle} />
                 <ResponsiveContainer width="100%" height={330}>
                   <BarChart data={emissionsChart} margin={{ top: 20, right: 18, left: 4, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.13)" vertical={false} />
-                    <XAxis dataKey="type" stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} />
-                    <YAxis stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} tickFormatter={tonnes} />
+                    <CartesianGrid stroke="rgba(75,91,108,0.14)" vertical={false} />
+                    <XAxis dataKey="type" stroke="rgba(58,70,86,.64)" tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(58,70,86,.64)" tickLine={false} axisLine={false} tickFormatter={tonnes} />
                     <Tooltip content={<GlassTooltip formatter={tonnes} note="Lifecycle emissions add manufacturing emissions to cumulative operating emissions for the selected horizon." />} />
                     <Bar dataKey="manufacturing" stackId="lifecycle" radius={[0, 0, 8, 8]} fill="#b9d0ff" name="Manufacturing" />
                     <Bar dataKey="operating" stackId="lifecycle" radius={[12, 12, 0, 0]} fill="#dff8ef" name={`${horizon} year operating`} />

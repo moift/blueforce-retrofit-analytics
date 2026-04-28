@@ -23,6 +23,7 @@ import {
   Sparkles,
   Table2,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 
 const SCENARIOS = {
@@ -100,8 +101,11 @@ const explanations = {
   cumulativeCost: "Cumulative cost comes directly from the model export: purchase price plus annual operating cost multiplied across the selected forecast horizon.",
   operatingCost: "Annual operating cost is the exported total yearly operating amount. The current JSON does not separate fuel/electricity from maintenance, so the dashboard does not invent that split.",
   savings: "Savings equals the comparison vehicle cumulative cost minus the retrofit cumulative cost for the selected year horizon.",
-  emissions: "CO2e avoided equals the comparison vehicle cumulative emissions minus retrofit cumulative emissions for the selected horizon.",
-  ghg: "GHG means greenhouse gas emissions. The model stores annual emissions in tonnes of CO2e, then multiplies through 3, 5, or 10 years for cumulative emissions.",
+  emissions: "CO2e avoided equals the comparison vehicle emissions minus retrofit emissions for the selected horizon. The lifecycle version includes manufacturing plus operating emissions.",
+  manufacturing: "Manufacturing emissions are the estimated one-time CO2e released before the vehicle enters service. The dataset stores this in kg CO2e; the model converts it to tonnes.",
+  lifecycle: "Lifecycle emissions start with manufacturing emissions at year 0, then add cumulative operating emissions from fuel, diesel, or electricity use.",
+  operatingEmissions: "Operating emissions are the emissions created while driving the vehicle. They do not include manufacturing emissions.",
+  ghg: "GHG means greenhouse gas emissions. The model reports tonnes of CO2e so different gases can be compared using one common unit.",
   scenario: "Scenario lines use the exported sensitivity sheets. Only one driver changes at a time while the other assumptions stay constant.",
 };
 
@@ -131,6 +135,10 @@ function vehicleType(model) {
   if (model.includes("Lightning")) return "OEM EV";
   if (model.includes("Diesel")) return "Diesel";
   return "ICE";
+}
+
+function metricValue(row, key) {
+  return Number(row?.[key] ?? 0);
 }
 
 function useScenarioData() {
@@ -210,13 +218,114 @@ function Term({ label, help }) {
   return <dt>{label}{help && <HelpTip text={help} />}</dt>;
 }
 
+function VehicleIllustration({ type, family }) {
+  const accent = palette[type] || "#ffffff";
+  const isElectric = type === "Retrofit" || type === "OEM EV";
+  const familyClass = family.toLowerCase().replace("-", "");
+  const Wheel = ({ x, y = 244, r = 42 }) => (
+    <g className="wheel-set">
+      <circle cx={x} cy={y} r={r} fill="rgba(18,24,27,.96)" />
+      <circle cx={x} cy={y} r={r * 0.54} fill="rgba(236,240,240,.92)" />
+      <circle cx={x} cy={y} r={r * 0.28} fill="rgba(95,105,108,.82)" />
+      <path d={`M${x - r * 0.45} ${y} H${x + r * 0.45} M${x} ${y - r * 0.45} V${y + r * 0.45}`} stroke="rgba(255,255,255,.58)" strokeWidth="4" strokeLinecap="round" />
+    </g>
+  );
+
+  const ElectricMark = ({ x = 610, y = 156 }) => (
+    isElectric ? <path d={`M${x} ${y} l-28 42 h26 l-18 39 46-52 h-28 l20-29z`} fill={accent} opacity=".92" /> : null
+  );
+
+  const f150 = (
+    <g filter="url(#vehicleShadow)">
+      <path d="M178 151 H332 C352 151 369 165 375 184 L390 225 H138 L151 176 C155 161 164 151 178 151Z" fill="url(#truckBody)" />
+      <path d="M386 145 H592 C620 145 646 164 653 191 L661 225 H382 L373 186 C369 168 374 145 386 145Z" fill="url(#truckBody)" />
+      <path d="M196 162 H259 L259 196 H173 L181 174 C184 166 189 162 196 162Z" fill="url(#truckGlass)" />
+      <path d="M269 162 H324 C338 162 350 172 354 185 L358 196 H269Z" fill="url(#truckGlass)" />
+      <path d="M415 162 H584 C600 162 614 172 619 187 L622 198 H415Z" fill="rgba(255,255,255,.32)" />
+      <rect x="430" y="171" width="72" height="18" rx="6" fill={accent} opacity=".78" />
+      <rect x="515" y="171" width="72" height="18" rx="6" fill="rgba(255,255,255,.48)" />
+      <path d="M142 225 H670 L654 244 H128 Z" fill="rgba(31,37,41,.9)" />
+      <Wheel x={226} r={39} />
+      <Wheel x={561} r={39} />
+      <path d="M396 216 H550" stroke={accent} strokeWidth="6" strokeLinecap="round" opacity=".9" />
+      <ElectricMark x={612} y={157} />
+    </g>
+  );
+
+  const f350 = (
+    <g filter="url(#vehicleShadow)">
+      <path d="M160 145 H339 C363 145 382 160 389 184 L405 229 H126 L141 173 C145 157 152 145 160 145Z" fill="url(#truckBody)" />
+      <path d="M398 135 H628 C658 135 683 157 690 187 L699 229 H396 L385 184 C380 160 386 135 398 135Z" fill="url(#truckBody)" />
+      <path d="M179 157 H251 L251 197 H152 L161 171 C164 162 170 157 179 157Z" fill="url(#truckGlass)" />
+      <path d="M263 157 H330 C345 157 358 168 362 183 L366 197 H263Z" fill="url(#truckGlass)" />
+      <rect x="428" y="153" width="198" height="50" rx="11" fill="rgba(255,255,255,.28)" />
+      <rect x="446" y="165" width="76" height="25" rx="7" fill={accent} opacity=".78" />
+      <rect x="535" y="165" width="72" height="25" rx="7" fill="rgba(255,255,255,.46)" />
+      <path d="M125 229 H710 L694 251 H110 Z" fill="rgba(31,37,41,.92)" />
+      <Wheel x={219} r={45} />
+      <Wheel x={575} r={45} />
+      <circle cx="637" cy="244" r="38" fill="rgba(18,24,27,.92)" />
+      <circle cx="637" cy="244" r="20" fill="rgba(236,240,240,.86)" />
+      <path d="M410 218 H615" stroke={accent} strokeWidth="7" strokeLinecap="round" opacity=".9" />
+      <path d="M118 221 H166" stroke="rgba(255,255,255,.65)" strokeWidth="5" strokeLinecap="round" />
+      <ElectricMark x={641} y={151} />
+    </g>
+  );
+
+  const f450 = (
+    <g filter="url(#vehicleShadow)">
+      <path d="M143 143 H324 C350 143 369 158 378 184 L394 232 H104 L122 171 C126 155 134 143 143 143Z" fill="url(#truckBody)" />
+      <path d="M174 156 H249 L249 198 H136 L148 169 C153 160 160 156 174 156Z" fill="url(#truckGlass)" />
+      <path d="M263 156 H321 C337 156 350 167 355 183 L359 198 H263Z" fill="url(#truckGlass)" />
+      <path d="M391 142 H684 C696 142 706 152 706 164 V226 H391Z" fill="rgba(242,246,245,.80)" />
+      <rect x="414" y="157" width="78" height="54" rx="9" fill={accent} opacity=".65" />
+      <rect x="507" y="157" width="76" height="54" rx="9" fill="rgba(255,255,255,.40)" />
+      <rect x="598" y="157" width="76" height="54" rx="9" fill="rgba(255,255,255,.32)" />
+      <path d="M100 232 H717 L700 255 H84 Z" fill="rgba(31,37,41,.94)" />
+      <Wheel x={211} r={47} />
+      <Wheel x={567} r={43} />
+      <circle cx="630" cy="247" r="39" fill="rgba(18,24,27,.92)" />
+      <circle cx="630" cy="247" r="21" fill="rgba(236,240,240,.86)" />
+      <path d="M395 221 H682" stroke={accent} strokeWidth="8" strokeLinecap="round" opacity=".9" />
+      <path d="M701 166 H727 V207 H701" fill="rgba(255,255,255,.32)" />
+      <path d="M690 145 L720 126" stroke="rgba(255,255,255,.58)" strokeWidth="5" strokeLinecap="round" />
+      <ElectricMark x={650} y={151} />
+    </g>
+  );
+
+  const body = family === "F-150" ? f150 : family === "F-350" ? f350 : f450;
+
+  return (
+    <svg className={`vehicle-visual vehicle-${familyClass}`} viewBox="0 0 760 320" role="img" aria-label={`${family} ${type} vehicle visual`}>
+      <defs>
+        <linearGradient id="truckBody" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="rgba(255,255,255,.97)" />
+          <stop offset=".58" stopColor="rgba(226,233,235,.88)" />
+          <stop offset="1" stopColor="rgba(164,177,181,.78)" />
+        </linearGradient>
+        <linearGradient id="truckGlass" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="rgba(216,243,255,.95)" />
+          <stop offset="1" stopColor="rgba(84,110,122,.76)" />
+        </linearGradient>
+        <filter id="vehicleShadow" x="-20%" y="-20%" width="140%" height="160%">
+          <feDropShadow dx="0" dy="24" stdDeviation="20" floodColor="rgba(14,20,22,.34)" />
+        </filter>
+      </defs>
+      <path className="route-line" d="M58 178 L135 178 L166 210 L238 210 L283 181 L360 181" />
+      <path className="route-line route-line-soft" d="M86 143 L121 143 L121 171 L158 171" />
+      {body}
+      <text x="380" y="292" textAnchor="middle" className="vehicle-caption">{family} / {type}</text>
+    </svg>
+  );
+}
+
 function App() {
   const data = useScenarioData();
   const [activeView, setActiveView] = useState("overview");
   const [vehicle, setVehicle] = useState("F-150");
   const [scenario, setScenario] = useState("base");
   const [horizon, setHorizon] = useState(10);
-  const [expandedCard, setExpandedCard] = useState("hero");
+  const [selectedType, setSelectedType] = useState("Retrofit");
 
   const today = useMemo(
     () =>
@@ -237,19 +346,34 @@ function App() {
     }));
   }, [data, vehicle]);
 
+  useEffect(() => {
+    if (rows.length && !rows.some((row) => row.type === selectedType)) {
+      setSelectedType("Retrofit");
+    }
+  }, [rows, selectedType]);
+
   const comparisons = useMemo(() => {
     if (!data) return [];
     return data.Comparison_Summary.filter((row) => row.retrofit_model.startsWith(vehicle));
   }, [data, vehicle]);
 
   const retrofit = rows.find((row) => row.type === "Retrofit");
+  const selectedRow = rows.find((row) => row.type === selectedType) || retrofit;
   const iceComparison = comparisons.find((row) => row.comparison.includes("ICE"));
   const otherComparison = comparisons.find((row) => !row.comparison.includes("ICE"));
+  const selectedComparison = selectedType === "ICE"
+    ? iceComparison
+    : selectedType === "Retrofit"
+      ? iceComparison
+      : comparisons.find((row) => row.comparison.includes(selectedType));
   const otherType = otherComparison?.comparison?.replace("Retrofit vs ", "") || "comparison vehicle";
   const horizonCostKey = `total_cost_year_${horizon}`;
   const horizonSavingsKey = `savings_year_${horizon}`;
   const horizonEmissionsKey = `emissions_avoided_year_${horizon}`;
-  const horizonCumulativeEmissionsKey = `cumulative_emissions_year_${horizon}`;
+  const horizonLifecycleAvoidedKey = `lifecycle_emissions_avoided_year_${horizon}`;
+  const horizonOperatingEmissionsKey = `cumulative_operating_emissions_year_${horizon}`;
+  const horizonLifecycleEmissionsKey = `lifecycle_emissions_year_${horizon}`;
+  const horizonCumulativeEmissionsKey = horizonLifecycleEmissionsKey;
   const best = rows.reduce((winner, row) => (!winner || row[horizonCostKey] < winner[horizonCostKey] ? row : winner), null);
   const retrofitWins = best?.type === "Retrofit";
 
@@ -257,11 +381,12 @@ function App() {
     () =>
       rows.map((row) => ({
         type: row.type,
+        selected: Math.round(row[horizonCostKey]),
         "3 years": Math.round(row.total_cost_year_3),
         "5 years": Math.round(row.total_cost_year_5),
         "10 years": Math.round(row.total_cost_year_10),
       })),
-    [rows],
+    [rows, horizonCostKey],
   );
 
   const operatingCostData = useMemo(
@@ -273,10 +398,11 @@ function App() {
     () =>
       rows.map((row) => ({
         type: row.type,
-        annual: Number(row.annual_emissions_tonnes.toFixed(2)),
-        cumulative: Number(row[horizonCumulativeEmissionsKey].toFixed(2)),
+        manufacturing: Number(metricValue(row, "manufacturing_emissions_tonnes").toFixed(2)),
+        operating: Number(metricValue(row, horizonOperatingEmissionsKey).toFixed(2)),
+        lifecycle: Number(metricValue(row, horizonLifecycleEmissionsKey).toFixed(2)),
       })),
-    [rows, horizonCumulativeEmissionsKey],
+    [rows, horizonOperatingEmissionsKey, horizonLifecycleEmissionsKey],
   );
 
   const sensitivityChart = useMemo(() => {
@@ -305,17 +431,19 @@ function App() {
 
   const recommendations = useMemo(() => {
     const savings = iceComparison?.[horizonSavingsKey] || 0;
-    const emissionAvoided = iceComparison?.[horizonEmissionsKey] || 0;
+    const lifecycleAvoided = iceComparison?.[horizonLifecycleAvoidedKey] || 0;
+    const operatingAvoided = iceComparison?.[horizonEmissionsKey] || 0;
     return [
       `${vehicle} retrofit saves ${currency(savings)} versus ICE over ${horizon} years in the exported model.`,
-      `${tonnes(emissionAvoided)} CO2e is avoided versus ICE over the selected horizon.`,
+      `${tonnes(lifecycleAvoided)} lifecycle CO2e is avoided versus ICE, including manufacturing plus operating emissions.`,
+      `Operating-only avoided emissions are ${tonnes(operatingAvoided)}, so the dashboard now separates use-phase impact from the full lifecycle view.`,
       scenario === "capital"
         ? "Capital cost is the key validation item before presenting a final client recommendation."
-        : "Capital, maintenance, and battery assumptions should stay clearly marked as validation items.",
+        : "Capital, maintenance, battery lifespan, and manufacturing-emissions assumptions should stay clearly marked as validation items.",
     ];
-  }, [vehicle, horizon, scenario, iceComparison, horizonSavingsKey, horizonEmissionsKey]);
+  }, [vehicle, horizon, scenario, iceComparison, horizonSavingsKey, horizonEmissionsKey, horizonLifecycleAvoidedKey]);
 
-  if (!data || !retrofit) {
+  if (!data || !retrofit || !selectedRow) {
     return (
       <div className="loading-screen">
         <div className="loading-card">Loading BlueForce scenario model...</div>
@@ -323,9 +451,25 @@ function App() {
     );
   }
 
-  const insightLine = retrofitWins
-    ? `${vehicle} retrofit is currently the lowest-cost pathway over ${horizon} years.`
-    : `${vehicle} retrofit remains competitive, but ${best?.type} is lowest in this selected view.`;
+  const selectedSavings = selectedType === "Retrofit"
+    ? iceComparison?.[horizonSavingsKey]
+    : selectedRow[horizonCostKey] - retrofit[horizonCostKey];
+  const selectedEmissionsGap = selectedType === "Retrofit"
+    ? iceComparison?.[horizonLifecycleAvoidedKey]
+    : metricValue(selectedRow, horizonLifecycleEmissionsKey) - metricValue(retrofit, horizonLifecycleEmissionsKey);
+  const advantageScore = Math.max(6, Math.min(98, Math.round((retrofit[horizonCostKey] / Math.max(selectedRow[horizonCostKey], retrofit[horizonCostKey])) * 100)));
+  const storyCost = selectedType === "Retrofit" ? retrofit[horizonCostKey] : selectedRow[horizonCostKey];
+  const storySavings = iceComparison?.[horizonSavingsKey] || 0;
+  const storyEmissions = iceComparison?.[horizonLifecycleAvoidedKey] || 0;
+  const storySentence = retrofitWins
+    ? `${vehicle} retrofit is the lowest-cost option in this ${horizon}-year view, saving ${currency(storySavings)} versus ICE and avoiding ${tonnes(storyEmissions)} lifecycle CO2e.`
+    : `${vehicle} retrofit is not the lowest-cost option in this view, so the model highlights which cost driver needs validation.`;
+  const storySteps = [
+    { label: "1. Start", title: vehicle, detail: `Choose the truck family and compare available pathways.` },
+    { label: "2. Pathway", title: selectedRow.type, detail: `Selected model: ${selectedRow.model}.` },
+    { label: "3. Cost", title: currency(storyCost), detail: `${horizon}-year cumulative cost from the model output.` },
+    { label: "4. Outcome", title: retrofitWins ? "Retrofit leads" : `${best?.type} leads`, detail: retrofitWins ? `${currency(storySavings)} saved vs ICE.` : "Review sponsor assumptions before recommendation." },
+  ];
 
   return (
     <main className="app-background">
@@ -367,9 +511,12 @@ function App() {
 
         <section className="control-grid">
           <SegmentedControl
-            label="Vehicle"
+            label="Vehicle family"
             value={vehicle}
-            onChange={setVehicle}
+            onChange={(value) => {
+              setVehicle(value);
+              setActiveView("overview");
+            }}
             options={VEHICLES.map((item) => ({ label: item, value: item }))}
           />
           <SegmentedControl
@@ -390,54 +537,104 @@ function App() {
         </section>
 
         <section className={`view-stack view-${activeView}`}>
-          {(activeView === "overview" || activeView === "scenario") && (
+          {(activeView === "overview" || activeView === "scenario" || activeView === "vehicles") && (
             <>
-              <GlassCard className={`hero-card ${expandedCard === "hero" ? "expanded" : ""}`} onClick={() => setExpandedCard(expandedCard === "hero" ? "" : "hero")}>
-                <div className="hero-content">
-                  <p className="eyebrow">Scenario Summary</p>
-                  <h2>Retrofit Advantage</h2>
-                  <p>{insightLine}</p>
-                  <div className={retrofitWins ? "status-pill good" : "status-pill watch"}>
-                    <Sparkles size={17} />
-                    {retrofitWins ? "Strong retrofit case" : "Review scenario drivers"}
-                  </div>
-                  {expandedCard === "hero" && (
-                    <div className="hero-detail">
-                      <strong>Model rule</strong>
-                      <span>Cost = purchase price + annual operating cost x selected years.</span>
-                    </div>
-                  )}
+              <GlassCard className="story-card">
+                <div className="story-intro">
+                  <p className="eyebrow">Decision story</p>
+                  <h2>Should this fleet retrofit?</h2>
+                  <p>{storySentence}</p>
                 </div>
-                <div className="hero-stats">
-                  <MetricCard label="Selected vehicle" value={vehicle} note={SCENARIOS[scenario].fullLabel || SCENARIOS[scenario].label} description="Changes every chart and metric to the selected truck family." icon={Car} />
-                  <MetricCard label="Selected horizon" value={`${horizon} years`} note="Forecast period" description="Uses the exported 3, 5, or 10 year model columns." icon={TrendingUp} />
-                  <MetricCard label="Retrofit savings vs ICE" value={compactMoney(iceComparison?.[horizonSavingsKey])} note="Cumulative savings" description={explanations.savings} icon={CircleDollarSign} accent="warm" />
+                <div className="story-steps">
+                  {storySteps.map((step) => (
+                    <article className="story-step" key={step.label}>
+                      <span>{step.label}</span>
+                      <strong>{step.title}</strong>
+                      <small>{step.detail}</small>
+                    </article>
+                  ))}
                 </div>
               </GlassCard>
 
-              <GlassCard className="chart-card">
-                <SectionTitle eyebrow="Cost Comparison" title={rows.map((row) => row.type).join(" vs ")} action={<span className="tiny-label">Selected horizon cumulative cost</span>} help={explanations.cumulativeCost} />
+              <GlassCard className="vehicle-showcase">
+                <div className="showcase-list">
+                  <p className="eyebrow">Select pathway</p>
+                  {rows.map((row) => (
+                    <button
+                      key={row.model}
+                      className={selectedType === row.type ? "pathway-card active" : "pathway-card"}
+                      type="button"
+                      onClick={() => setSelectedType(row.type)}
+                    >
+                      <span className="vehicle-dot" style={{ "--dot": palette[row.type] }} />
+                      <span>
+                        <strong>{row.type}</strong>
+                        <small>{row.model}</small>
+                      </span>
+                      <b>{compactMoney(row[horizonCostKey])}</b>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="showcase-stage">
+                  <div className="stage-kicker">
+                    <span>{vehicle} selected</span>
+                    <span>{SCENARIOS[scenario].fullLabel}</span>
+                  </div>
+                  <h2>{selectedRow.model}</h2>
+                  <VehicleIllustration type={selectedRow.type} family={vehicle} />
+                  <div className="stage-readout">
+                    <div>
+                      <p className="eyebrow">{horizon} year cost</p>
+                      <strong>{currency(selectedRow[horizonCostKey])}</strong>
+                    </div>
+                    <div>
+                      <p className="eyebrow">Annual op.</p>
+                      <strong>{annual(selectedRow.annual_operating_cost)}</strong>
+                    </div>
+                    <div>
+                      <p className="eyebrow">Lifecycle GHG</p>
+                      <strong>{tonnes(selectedRow[horizonLifecycleEmissionsKey])}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="showcase-analytics">
+                  <div className="score-ring" style={{ "--score": advantageScore }}>
+                    <span>{advantageScore}%</span>
+                    <small>Retrofit index</small>
+                  </div>
+                  <MetricCard label="Purchase price" value={currency(selectedRow.purchase_price)} note="Starting capital" description="Purchase price is the starting capital cost in the exported base dataset." icon={CircleDollarSign} />
+                  <MetricCard label={selectedType === "Retrofit" ? "Savings vs ICE" : "Retrofit gap"} value={compactMoney(selectedSavings)} note={`${horizon} year view`} description={explanations.savings} icon={TrendingUp} accent="warm" />
+                  <MetricCard label="Lifecycle CO2e difference" value={tonnes(selectedEmissionsGap)} note={selectedType === "Retrofit" ? "avoided vs ICE" : "above retrofit"} description={explanations.emissions} icon={Leaf} />
+                </div>
+              </GlassCard>
+
+              <GlassCard className="chart-card showcase-chart">
+                <SectionTitle eyebrow="Cost Comparison" title={`${vehicle} pathway cost`} action={<span className="tiny-label">Selected horizon cumulative cost</span>} help={explanations.cumulativeCost} />
                 <ResponsiveContainer width="100%" height={310}>
                   <BarChart data={costChart} margin={{ top: 22, right: 18, left: 4, bottom: 0 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.16)" vertical={false} />
                     <XAxis dataKey="type" stroke="rgba(255,255,255,.84)" tickLine={false} axisLine={false} />
                     <YAxis stroke="rgba(255,255,255,.78)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
                     <Tooltip content={<GlassTooltip formatter={currency} note={explanations.cumulativeCost} />} />
-                    <Bar dataKey={`${horizon} years`} radius={[18, 18, 8, 8]}>
+                    <Bar dataKey="selected" radius={[18, 18, 8, 8]}>
                       {costChart.map((entry) => (
-                        <Cell key={entry.type} fill={palette[entry.type] || "#ffffff"} fillOpacity={0.92} />
+                        <Cell key={entry.type} fill={palette[entry.type] || "#ffffff"} fillOpacity={entry.type === selectedType ? 1 : 0.55} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </GlassCard>
 
-              <GlassCard className="metrics-panel">
+              <GlassCard className="metrics-panel decision-panel">
                 <SectionTitle eyebrow="Decision Signals" title="Current selection" />
                 <div className="metric-grid">
-                  <MetricCard label="Operating cost" value={annual(retrofit.annual_operating_cost)} note="Retrofit annual total" description={explanations.operatingCost} icon={Gauge} />
-                  <MetricCard label="CO2e avoided" value={tonnes(iceComparison?.[horizonEmissionsKey])} note="vs ICE" description={explanations.emissions} icon={Leaf} />
-                  <MetricCard label={`Savings vs ${otherType}`} value={compactMoney(otherComparison?.[horizonSavingsKey])} note={`${horizon} year total`} description={explanations.savings} icon={CircleDollarSign} accent="warm" />
+                  <MetricCard label="Operating cost" value={annual(selectedRow.annual_operating_cost)} note={`${selectedRow.type} annual total`} description={explanations.operatingCost} icon={Gauge} />
+                  <MetricCard label="Lifecycle GHG" value={tonnes(selectedRow[horizonLifecycleEmissionsKey])} note={`${horizon} year manufacturing + operating`} description={explanations.lifecycle} icon={Leaf} />
+                  <MetricCard label="Manufacturing GHG" value={tonnes(selectedRow.manufacturing_emissions_tonnes)} note="one-time starting point" description={explanations.manufacturing} icon={Zap} />
+                  <MetricCard label="Operating GHG" value={tonnes(selectedRow[horizonOperatingEmissionsKey])} note={`${horizon} year driving emissions`} description={explanations.operatingEmissions} icon={Leaf} />
+                  <MetricCard label={`Retrofit vs ${otherType}`} value={compactMoney(otherComparison?.[horizonSavingsKey])} note={`${horizon} year savings`} description={explanations.savings} icon={CircleDollarSign} accent="warm" />
                   <MetricCard label="Lowest pathway" value={best?.type} note={`${horizon} year total cost`} description="Compares every available pathway for the selected truck and horizon, then shows the lowest cumulative cost." icon={Sparkles} />
                 </div>
               </GlassCard>
@@ -451,56 +648,54 @@ function App() {
                     <YAxis stroke="rgba(255,255,255,.78)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
                     <Tooltip content={<GlassTooltip formatter={currency} note={SCENARIOS[scenario].description} />} />
                     {["Retrofit", "ICE", "OEM EV", "Diesel"].map((key) => (
-                      <Line key={key} type="monotone" dataKey={key} stroke={palette[key]} strokeWidth={3.5} dot={{ r: 5, strokeWidth: 2 }} activeDot={{ r: 7 }} connectNulls />
+                      <Line key={key} type="monotone" dataKey={key} stroke={palette[key]} strokeWidth={key === selectedType ? 5 : 3.2} dot={{ r: key === selectedType ? 6 : 4, strokeWidth: 2 }} activeDot={{ r: 7 }} connectNulls />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
               </GlassCard>
-            </>
-          )}
 
-          {(activeView === "vehicles" || activeView === "overview") && (
-            <GlassCard className="vehicle-panel">
-              <SectionTitle eyebrow="Vehicle Insights" title={`${vehicle} pathway comparison`} help="Click a vehicle card to reveal a short interpretation. All values come from BaseCase_Summary." />
-              <div className="vehicle-grid">
-                {rows.map((row) => (
-                  <button key={row.model} className={expandedCard === row.model ? "vehicle-card selected" : "vehicle-card"} type="button" onClick={() => setExpandedCard(expandedCard === row.model ? "" : row.model)}>
-                    <span className="vehicle-dot" style={{ "--dot": palette[row.type] }} />
-                    <h3>{row.type}</h3>
-                    <p>{row.model}</p>
-                    <dl>
-                      <div><Term label="Purchase" help="Starting capital cost in CAD from the base dataset." /><dd>{currency(row.purchase_price)}</dd></div>
-                      <div><Term label="Annual op." help={explanations.operatingCost} /><dd>{annual(row.annual_operating_cost)}</dd></div>
-                      <div><Term label={`${horizon} year cost`} help={explanations.cumulativeCost} /><dd>{currency(row[horizonCostKey])}</dd></div>
-                      <div><Term label={`${horizon} year GHG`} help={explanations.ghg} /><dd>{tonnes(row[horizonCumulativeEmissionsKey])}</dd></div>
-                    </dl>
-                    {expandedCard === row.model && (
-                      <p className="vehicle-note">{row.type === "Retrofit" ? "Retrofit combines lower upfront cost with low operating emissions in this model." : `${row.type} is included as the comparison baseline for cost and emissions.`}</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </GlassCard>
+              <GlassCard className="breakdown-card">
+                <SectionTitle eyebrow="Operating Cost" title="Annual operating total" help={explanations.operatingCost} />
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart data={operatingCostData} margin={{ top: 18, right: 18, left: 4, bottom: 0 }}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.12)" vertical={false} />
+                    <XAxis dataKey="type" stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
+                    <Tooltip content={<GlassTooltip formatter={currency} note={explanations.operatingCost} />} />
+                    <Bar dataKey="annual" fill="#ffffff" opacity={0.76} radius={[14, 14, 6, 6]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <p className="data-note">Fuel/electricity vs maintenance split is marked pending until those columns are available in the exported model data.</p>
+              </GlassCard>
+
+              <GlassCard className="recommendation-panel">
+                <SectionTitle eyebrow="Recommendation" title="Client-facing takeaways" />
+                <ol className="recommendations">
+                  {recommendations.map((item) => <li key={item}>{item}</li>)}
+                </ol>
+              </GlassCard>
+            </>
           )}
 
           {activeView === "emissions" && (
             <>
               <GlassCard className="chart-card wide">
-                <SectionTitle eyebrow="Emissions Panel" title="Annual and cumulative emissions" help={explanations.ghg} />
+                <SectionTitle eyebrow="Emissions Panel" title="Lifecycle emissions breakdown" help={explanations.lifecycle} />
                 <ResponsiveContainer width="100%" height={330}>
                   <BarChart data={emissionsChart} margin={{ top: 20, right: 18, left: 4, bottom: 0 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.13)" vertical={false} />
                     <XAxis dataKey="type" stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} />
                     <YAxis stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} tickFormatter={tonnes} />
-                    <Tooltip content={<GlassTooltip formatter={tonnes} note="Annual emissions are tonnes CO2e per year. Cumulative emissions follow the selected horizon." />} />
-                    <Bar dataKey="annual" radius={[12, 12, 0, 0]} fill="#dff8ef" name="Annual" />
-                    <Bar dataKey="cumulative" radius={[12, 12, 0, 0]} fill="#ffffff" opacity={0.65} name={`${horizon} year cumulative`} />
+                    <Tooltip content={<GlassTooltip formatter={tonnes} note="Lifecycle emissions add manufacturing emissions to cumulative operating emissions for the selected horizon." />} />
+                    <Bar dataKey="manufacturing" stackId="lifecycle" radius={[0, 0, 8, 8]} fill="#b9d0ff" name="Manufacturing" />
+                    <Bar dataKey="operating" stackId="lifecycle" radius={[12, 12, 0, 0]} fill="#dff8ef" name={`${horizon} year operating`} />
+                    <Bar dataKey="lifecycle" fill="transparent" name="Lifecycle total" />
                   </BarChart>
                 </ResponsiveContainer>
               </GlassCard>
               <GlassCard className="recommendation-panel">
-                <SectionTitle eyebrow="CO2e Avoided" title={tonnes(iceComparison?.[horizonEmissionsKey])} />
-                <p className="panel-copy">Retrofit keeps operating emissions dramatically lower than ICE and diesel pathways in the current model.</p>
+                <SectionTitle eyebrow="Lifecycle CO2e Avoided" title={tonnes(iceComparison?.[horizonLifecycleAvoidedKey])} />
+                <p className="panel-copy">Retrofit is now evaluated with manufacturing emissions as the starting point, then operating emissions are added through the selected horizon.</p>
               </GlassCard>
             </>
           )}
@@ -509,11 +704,11 @@ function App() {
             <>
               <GlassCard className="assumption-panel">
                 <SectionTitle eyebrow="Data Status" title="Confirmed inputs" />
-                <StatusList items={["Vehicle purchase prices in current dataset", "Annual operating cost totals from exported model", "Annual and cumulative emissions from exported model", "3, 5, and 10 year scenario outputs"]} />
+                <StatusList items={["Vehicle purchase prices in current dataset", "Annual operating cost totals from exported model", "Manufacturing emissions estimates from updated dataset", "Operating and lifecycle emissions from exported model", "3, 5, and 10 year scenario outputs"]} />
               </GlassCard>
               <GlassCard className="assumption-panel">
                 <SectionTitle eyebrow="Pending Validation" title="Sponsor questions" />
-                <StatusList items={["Confirm F-350 retrofit price", "Confirm fuel/electricity and maintenance split if client wants a detailed operating breakdown", "Confirm retrofit maintenance costs", "Confirm battery lifespan, replacement risk, and manufacturing emissions"]} muted />
+                <StatusList items={["Confirm F-350 retrofit price", "Confirm fuel/electricity and maintenance split if client wants a detailed operating breakdown", "Confirm retrofit maintenance costs", "Confirm battery lifespan and replacement risk", "Validate manufacturing-emissions estimates with sponsor if used in final claims"]} muted />
               </GlassCard>
             </>
           )}
@@ -531,7 +726,9 @@ function App() {
                       <th>3 Year Cost</th>
                       <th>5 Year Cost</th>
                       <th>10 Year Cost</th>
-                      <th>Selected GHG</th>
+                      <th>Operating GHG</th>
+                      <th>Manufacturing GHG</th>
+                      <th>Lifecycle GHG</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -543,37 +740,15 @@ function App() {
                         <td>{currency(row.total_cost_year_3)}</td>
                         <td>{currency(row.total_cost_year_5)}</td>
                         <td>{currency(row.total_cost_year_10)}</td>
-                        <td>{tonnes(row[horizonCumulativeEmissionsKey])}</td>
+                        <td>{tonnes(row[horizonOperatingEmissionsKey])}</td>
+                        <td>{tonnes(row.manufacturing_emissions_tonnes)}</td>
+                        <td>{tonnes(row[horizonLifecycleEmissionsKey])}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </GlassCard>
-          )}
-
-          {(activeView === "overview" || activeView === "scenario") && (
-            <>
-              <GlassCard className="breakdown-card">
-                <SectionTitle eyebrow="Operating Cost" title="Annual operating total" help={explanations.operatingCost} />
-                <ResponsiveContainer width="100%" height={230}>
-                  <BarChart data={operatingCostData} margin={{ top: 18, right: 18, left: 4, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.12)" vertical={false} />
-                    <XAxis dataKey="type" stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} />
-                    <YAxis stroke="rgba(255,255,255,.72)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
-                    <Tooltip content={<GlassTooltip formatter={currency} note={explanations.operatingCost} />} />
-                    <Bar dataKey="annual" fill="#ffffff" opacity={0.76} radius={[14, 14, 6, 6]} />
-                  </BarChart>
-                </ResponsiveContainer>
-                <p className="data-note">Fuel/electricity vs maintenance split is marked pending until those columns are available in the exported model data.</p>
-              </GlassCard>
-              <GlassCard className="recommendation-panel">
-                <SectionTitle eyebrow="Recommendation" title="Client-facing takeaways" />
-                <ol className="recommendations">
-                  {recommendations.map((item) => <li key={item}>{item}</li>)}
-                </ol>
-              </GlassCard>
-            </>
           )}
         </section>
       </section>

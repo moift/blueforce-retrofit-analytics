@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -88,6 +89,8 @@ const palette = {
   Diesel: "#d4c3ff",
 };
 
+const scenarioLineColors = ["#2d6cdf", "#0f9f76", "#f19a4b", "#8067d8", "#d65c5c"];
+
 const navItems = [
   { id: "overview", label: "Overview", icon: Home },
   { id: "scenario", label: "Scenario", icon: Gauge },
@@ -106,7 +109,7 @@ const explanations = {
   lifecycle: "Lifecycle emissions start with manufacturing emissions at year 0, then add cumulative operating emissions from fuel, diesel, or electricity use.",
   operatingEmissions: "Operating emissions are the emissions created while driving the vehicle. They do not include manufacturing emissions.",
   ghg: "GHG means greenhouse gas emissions. The model reports tonnes of CO2e so different gases can be compared using one common unit.",
-  scenario: "Scenario lines use the exported sensitivity sheets. Only one driver changes at a time while the other assumptions stay constant.",
+  scenario: "Scenario charts now use year on the x-axis. Each line is one sensitivity case, so only one driver changes at a time while the other assumptions stay constant.",
 };
 
 function currency(value) {
@@ -135,6 +138,16 @@ function vehicleType(model) {
   if (model.includes("Lightning")) return "OEM EV";
   if (model.includes("Diesel")) return "Diesel";
   return "ICE";
+}
+
+function scenarioSeriesLabel(parameter, value, config) {
+  const number = Number(value);
+  if (parameter === "km_per_year") return `${Math.round(number).toLocaleString()} km/year`;
+  if (parameter === "fleet_size") return `${Math.round(number)} vehicles`;
+  if (parameter === "fuel_multiplier") return `${number.toFixed(2).replace(/\.00$/, "")}x fuel`;
+  if (parameter === "inflation_rate") return `${Math.round(number * 100)}% maintenance`;
+  if (parameter === "capital_cost_multiplier") return `${number.toFixed(2).replace(/\.00$/, "")}x capital`;
+  return config?.formatX ? config.formatX(number) : String(value);
 }
 
 function metricValue(row, key) {
@@ -415,29 +428,54 @@ function App() {
     [rows, horizonOperatingEmissionsKey, horizonLifecycleEmissionsKey],
   );
 
-  const sensitivityChart = useMemo(() => {
-    if (!data || scenario === "base") {
-      return [3, 5, 10].map((year) => {
+  const scenarioChart = useMemo(() => {
+    if (!data || !selectedRow) {
+      return { data: [], keys: [], colors: {}, note: "" };
+    }
+
+    if (scenario === "base") {
+      const keys = rows.map((row) => row.type);
+      const colors = Object.fromEntries(keys.map((key) => [key, palette[key] || scenarioLineColors[0]]));
+      return {
+        data: [3, 5, 10].map((year) => {
+          const item = { label: `${year}Y` };
+          rows.forEach((row) => {
+            item[row.type] = Number(row[`total_cost_year_${year}`]);
+          });
+          return item;
+        }),
+        keys,
+        colors,
+        note: "Base case uses 3, 5, and 10 year cumulative costs by pathway.",
+      };
+    }
+
+    const config = SCENARIOS[scenario];
+    const source = data[config.sheet] || [];
+    const modelRows = source.filter((row) => row.model === selectedRow.model);
+    const parameterValues = [...new Set(modelRows.map((row) => Number(row[config.parameter])))]
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+    const keys = parameterValues.map((value) => scenarioSeriesLabel(config.parameter, value, config));
+    const colors = Object.fromEntries(keys.map((key, index) => [key, scenarioLineColors[index % scenarioLineColors.length]]));
+
+    return {
+      data: Array.from({ length: 10 }, (_, index) => {
+        const year = index + 1;
         const item = { label: `${year}Y` };
-        rows.forEach((row) => {
-          item[row.type] = row[`total_cost_year_${year}`];
+        parameterValues.forEach((parameterValue, parameterIndex) => {
+          const match = modelRows.find(
+            (row) => Number(row.year) === year && Number(row[config.parameter]) === parameterValue,
+          );
+          item[keys[parameterIndex]] = match ? Number(match[config.metric]) : null;
         });
         return item;
-      });
-    }
-    const config = SCENARIOS[scenario];
-    return [...new Set(data[config.sheet].filter((row) => row.model.startsWith(vehicle) && Number(row.year) === horizon).map((row) => Number(row[config.parameter])))]
-      .sort((a, b) => a - b)
-      .map((param) => {
-        const item = { label: config.formatX(param) };
-        data[config.sheet]
-          .filter((row) => row.model.startsWith(vehicle) && Number(row.year) === horizon && Number(row[config.parameter]) === param)
-          .forEach((row) => {
-            item[vehicleType(row.model)] = Number(row[config.metric]);
-          });
-        return item;
-      });
-  }, [data, rows, scenario, vehicle, horizon]);
+      }),
+      keys,
+      colors,
+      note: `Year x-axis; lines compare ${config.fullLabel.toLowerCase()} cases for ${selectedRow.type}.`,
+    };
+  }, [data, rows, scenario, selectedRow]);
 
   const recommendations = useMemo(() => {
     const savings = iceComparison?.[horizonSavingsKey] || 0;
@@ -682,15 +720,25 @@ function App() {
               </GlassCard>
 
               <GlassCard className="scenario-card">
-                <SectionTitle eyebrow="Scenario Analysis" title={SCENARIOS[scenario].fullLabel || "Base case"} action={<span className="tiny-label">{SCENARIOS[scenario].description}</span>} help={explanations.scenario} />
-                <ResponsiveContainer width="100%" height={290}>
-                  <LineChart data={sensitivityChart} margin={{ top: 20, right: 18, left: 4, bottom: 0 }}>
+                <SectionTitle eyebrow="Scenario Analysis" title={SCENARIOS[scenario].fullLabel || "Base case"} action={<span className="tiny-label">{scenarioChart.note}</span>} help={explanations.scenario} />
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={scenarioChart.data} margin={{ top: 20, right: 18, left: 4, bottom: 18 }}>
                     <CartesianGrid stroke="rgba(75,91,108,0.14)" vertical={false} />
-                    <XAxis dataKey="label" stroke="rgba(58,70,86,.74)" tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" stroke="rgba(58,70,86,.74)" tickLine={false} axisLine={false} tickMargin={10} />
                     <YAxis stroke="rgba(58,70,86,.68)" tickLine={false} axisLine={false} tickFormatter={compactMoney} />
-                    <Tooltip content={<GlassTooltip formatter={currency} note={SCENARIOS[scenario].description} />} />
-                    {["Retrofit", "ICE", "OEM EV", "Diesel"].map((key) => (
-                      <Line key={key} type="monotone" dataKey={key} stroke={palette[key]} strokeWidth={key === selectedType ? 5 : 3.2} dot={{ r: key === selectedType ? 6 : 4, strokeWidth: 2 }} activeDot={{ r: 7 }} connectNulls />
+                    <Tooltip content={<GlassTooltip formatter={currency} note={scenarioChart.note || SCENARIOS[scenario].description} />} />
+                    <Legend iconType="circle" verticalAlign="bottom" align="center" />
+                    {scenarioChart.keys.map((key, index) => (
+                      <Line
+                        key={key}
+                        type="monotone"
+                        dataKey={key}
+                        stroke={scenarioChart.colors[key] || scenarioLineColors[index % scenarioLineColors.length]}
+                        strokeWidth={scenario === "base" && key === selectedType ? 5 : 3.2}
+                        dot={{ r: scenario === "base" && key === selectedType ? 6 : 4, strokeWidth: 2 }}
+                        activeDot={{ r: 7 }}
+                        connectNulls
+                      />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>

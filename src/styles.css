@@ -2202,3 +2202,20 @@ th {
     margin-top: 12px;
   }
 }
+
+.scenario-card .recharts-legend-wrapper {
+  padding-top: 10px;
+}
+
+.scenario-card .recharts-legend-item-text {
+  color: rgba(58,70,86,.72) !important;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.scenario-card .recharts-default-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 14px;
+}

@@ -5700,3 +5700,83 @@ button.yana-kpi-card:hover,
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* Final simulator drag-track behavior: one mouse press, continuous left/right drag. */
+.smooth-slider-drag-track {
+  display: flex !important;
+  height: 32px;
+  align-items: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.smooth-slider-drag-track:active {
+  cursor: grabbing;
+}
+
+.smooth-slider-drag-track .smooth-slider-fill {
+  pointer-events: none;
+}
+
+.smooth-slider-drag-track .smooth-slider-thumb {
+  pointer-events: none;
+}
+
+
+/* Final native simulator sliders: larger hit target and normal click-hold-drag behavior. */
+.smooth-live-control .smooth-slider-input {
+  display: block !important;
+  width: 100%;
+  height: 36px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: grab;
+  touch-action: pan-x;
+}
+
+.smooth-live-control .smooth-slider-input:active {
+  cursor: grabbing;
+}
+
+.smooth-live-control .smooth-slider-input::-webkit-slider-runnable-track {
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #18181B 0 var(--slider-percent), #D7D7DB var(--slider-percent) 100%);
+}
+
+.smooth-live-control .smooth-slider-input::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -10.5px;
+  border: 6px solid #FFFFFF;
+  border-radius: 50%;
+  background: #18181B;
+  box-shadow: 0 14px 30px rgba(24,24,27,.22);
+}
+
+.smooth-live-control .smooth-slider-input::-moz-range-track {
+  height: 7px;
+  border-radius: 999px;
+  background: #D7D7DB;
+}
+
+.smooth-live-control .smooth-slider-input::-moz-range-progress {
+  height: 7px;
+  border-radius: 999px;
+  background: #18181B;
+}
+
+.smooth-live-control .smooth-slider-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 6px solid #FFFFFF;
+  border-radius: 50%;
+  background: #18181B;
+  box-shadow: 0 14px 30px rgba(24,24,27,.22);
+}

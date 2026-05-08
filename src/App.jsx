@@ -847,6 +847,106 @@ function buildTruckModel(type, family) {
   return group;
 }
 
+function ControlSlider({ label, value, min, max, step, format, onChange }) {
+  const trackRef = useRef(null);
+  const rectRef = useRef(null);
+  const draggingRef = useRef(false);
+  const percent = max === min ? 0 : ((Number(value) - min) / (max - min)) * 100;
+  const onChangeRef = useRef(onChange);
+  const valueRef = useRef(Number(value));
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    valueRef.current = Number(value);
+  }, [onChange, value]);
+
+  const valueFromClientX = (clientX) => {
+    const rect = rectRef.current || trackRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return valueRef.current;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const raw = min + ratio * (max - min);
+    const snapped = Math.round(raw / step) * step;
+    return Math.max(min, Math.min(max, Number(snapped.toFixed(4))));
+  };
+
+  useEffect(() => {
+    const track = trackRef.current;
+    const updateFromClientX = (clientX) => onChangeRef.current(valueFromClientX(clientX));
+    const startDragging = (event) => {
+      event.preventDefault();
+      draggingRef.current = true;
+      rectRef.current = track?.getBoundingClientRect();
+      updateFromClientX(event.clientX);
+    };
+    const handleMouseMove = (event) => {
+      if (!draggingRef.current) return;
+      event.preventDefault();
+      updateFromClientX(event.clientX);
+    };
+    const stopDragging = () => {
+      draggingRef.current = false;
+      rectRef.current = null;
+    };
+    const handleTouchMove = (event) => {
+      if (!draggingRef.current) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      updateFromClientX(touch.clientX);
+    };
+    const startTouch = (event) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      draggingRef.current = true;
+      rectRef.current = track?.getBoundingClientRect();
+      updateFromClientX(touch.clientX);
+    };
+
+    track?.addEventListener("mousedown", startDragging);
+    track?.addEventListener("touchstart", startTouch, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopDragging);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", stopDragging);
+    return () => {
+      track?.removeEventListener("mousedown", startDragging);
+      track?.removeEventListener("touchstart", startTouch);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopDragging);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", stopDragging);
+    };
+  }, [min, max, step]);
+
+  const handleKeyDown = (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === "Home") return onChange(min);
+    if (event.key === "End") return onChange(max);
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    onChange(Math.max(min, Math.min(max, Number((Number(value) + direction * step).toFixed(4)))));
+  };
+
+  return (
+    <label className="live-control smooth-live-control">
+      <span>{label}<b>{format(value)}</b></span>
+      <div
+        ref={trackRef}
+        className={draggingRef.current ? "smooth-slider smooth-slider-drag-track dragging" : "smooth-slider smooth-slider-drag-track"}
+        role="slider"
+        tabIndex="0"
+        aria-label={label}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuenow={Number(value)}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="smooth-slider-fill" style={{ width: `${percent}%` }} />
+        <div className="smooth-slider-thumb" style={{ left: `${percent}%` }} />
+      </div>
+    </label>
+  );
+}
+
 function App() {
   const data = useScenarioData();
   const [activeView, setActiveView] = useState("overview");
@@ -1452,28 +1552,6 @@ function App() {
       </section>
     </>
   );
-
-  const ControlSlider = ({ label, value, min, max, step, format, onChange }) => {
-    const percent = max === min ? 0 : ((Number(value) - min) / (max - min)) * 100;
-
-    return (
-      <label className="live-control smooth-live-control">
-        <span>{label}<b>{format(value)}</b></span>
-        <input
-          className="smooth-slider-input"
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          aria-label={label}
-          style={{ "--slider-percent": `${percent}%` }}
-          onInput={(event) => onChange(Number(event.currentTarget.value))}
-          onChange={(event) => onChange(Number(event.currentTarget.value))}
-        />
-      </label>
-    );
-  };
 
   const renderSimulator = () => (
     <>

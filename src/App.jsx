@@ -1,5 +1,7 @@
 import React from "react";
 import * as THREE from "three";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -21,18 +23,26 @@ import {
   Car,
   CircleDollarSign,
   ClipboardList,
+  ExternalLink,
   Gauge,
   Home,
   Info,
   Leaf,
+  LockKeyhole,
+  LogIn,
+  LogOut,
+  MapPin,
   MousePointerClick,
   RotateCcw,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Table2,
   TrendingUp,
+  Users,
   X,
   Zap,
+  Search,
   FileText,
 } from "lucide-react";
 
@@ -93,7 +103,7 @@ const VEHICLES = ["F-150", "F-350", "F-450"];
 const OWNERSHIP_MODES = [
   { id: "service", label: "Service", donorCostFraction: 0, donorEmissions: false, help: "Retrofit service only. No donor ICE purchase price or manufacturing emissions are added." },
   { id: "used", label: "Used car", donorCostFraction: 0.5, donorEmissions: true, help: "Adds 50% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
-  { id: "full", label: "100% ICE", donorCostFraction: 1, donorEmissions: true, help: "Adds 100% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
+  { id: "full", label: "Full ICE", donorCostFraction: 1, donorEmissions: true, help: "Adds 100% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
 ];
 const DEFAULT_TUNER_INDEX = {
   base: 0,
@@ -141,7 +151,441 @@ const navItems = [
   { id: "scenario", label: "Scenario Analysis", icon: BarChartIcon },
   { id: "breakeven", label: "Breakeven", icon: TrendingUp },
   { id: "carbon", label: "Carbon Impact", icon: Leaf },
+  { id: "ev-network", label: "EV Network", icon: MapPin },
+  { id: "stakeholders", label: "Stakeholder View", icon: ClipboardList },
   { id: "methodology", label: "Methodology", icon: FileText },
+];
+
+const GREATER_VANCOUVER_STATIONS = [
+  {
+    id: "vancouver-city-hall",
+    name: "Vancouver City Hall charging hub",
+    city: "Vancouver",
+    address: "453 W 12th Ave, Vancouver",
+    lat: 49.2609,
+    lng: -123.1139,
+    operator: "Public / municipal",
+    plugs: 8,
+    fastChargers: 2,
+    level2: 6,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public parkade / civic area",
+    fleetUse: "Useful central Vancouver top-up point for municipal and service fleets.",
+  },
+  {
+    id: "pacific-centre",
+    name: "CF Pacific Centre parkade",
+    city: "Vancouver",
+    address: "701 W Georgia St, Vancouver",
+    lat: 49.2832,
+    lng: -123.1190,
+    operator: "Retail / parkade network",
+    plugs: 12,
+    fastChargers: 0,
+    level2: 12,
+    connectorTypes: ["Level 2", "J1772"],
+    access: "Public parkade",
+    fleetUse: "Downtown destination charging; better for dwell time than fast turnaround.",
+  },
+  {
+    id: "science-world",
+    name: "False Creek / Science World chargers",
+    city: "Vancouver",
+    address: "1455 Quebec St, Vancouver",
+    lat: 49.2734,
+    lng: -123.1039,
+    operator: "Public charging network",
+    plugs: 6,
+    fastChargers: 1,
+    level2: 5,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public destination area",
+    fleetUse: "Good urban corridor coverage near downtown and Main Street routes.",
+  },
+  {
+    id: "bcit-burnaby",
+    name: "BCIT Burnaby campus chargers",
+    city: "Burnaby",
+    address: "3700 Willingdon Ave, Burnaby",
+    lat: 49.2506,
+    lng: -123.0014,
+    operator: "Institutional / campus",
+    plugs: 10,
+    fastChargers: 0,
+    level2: 10,
+    connectorTypes: ["Level 2", "J1772"],
+    access: "Campus parking areas",
+    fleetUse: "Strong education/campus demonstration site for fleet-electrification planning.",
+  },
+  {
+    id: "metrotown",
+    name: "Metropolis at Metrotown charging cluster",
+    city: "Burnaby",
+    address: "4700 Kingsway, Burnaby",
+    lat: 49.2276,
+    lng: -123.0076,
+    operator: "Retail / charging network",
+    plugs: 18,
+    fastChargers: 2,
+    level2: 16,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public mall parking",
+    fleetUse: "Large central Burnaby charging cluster near high-traffic commercial routes.",
+  },
+  {
+    id: "brentwood",
+    name: "The Amazing Brentwood chargers",
+    city: "Burnaby",
+    address: "4567 Lougheed Hwy, Burnaby",
+    lat: 49.2677,
+    lng: -123.0008,
+    operator: "Retail / parkade network",
+    plugs: 14,
+    fastChargers: 1,
+    level2: 13,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public parkade",
+    fleetUse: "Supports North Burnaby routes and Lougheed corridor operations.",
+  },
+  {
+    id: "richmond-oval",
+    name: "Richmond Olympic Oval chargers",
+    city: "Richmond",
+    address: "6111 River Rd, Richmond",
+    lat: 49.1749,
+    lng: -123.1510,
+    operator: "Municipal / public network",
+    plugs: 8,
+    fastChargers: 1,
+    level2: 7,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public civic parking",
+    fleetUse: "Useful Richmond civic node near airport and river-road fleet corridors.",
+  },
+  {
+    id: "mcarthurglen",
+    name: "McArthurGlen outlet charging cluster",
+    city: "Richmond",
+    address: "1000-7899 Templeton Station Rd, Richmond",
+    lat: 49.1971,
+    lng: -123.1417,
+    operator: "Retail / charging network",
+    plugs: 12,
+    fastChargers: 2,
+    level2: 10,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public retail parking",
+    fleetUse: "Airport-adjacent charging node for shuttle, service, and delivery fleets.",
+  },
+  {
+    id: "surrey-central",
+    name: "Surrey Central charging hub",
+    city: "Surrey",
+    address: "102 Ave & City Pkwy, Surrey",
+    lat: 49.1897,
+    lng: -122.8486,
+    operator: "Public / transit-area network",
+    plugs: 10,
+    fastChargers: 2,
+    level2: 8,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public urban centre",
+    fleetUse: "Strong South Fraser coverage for high-kilometre regional fleet routes.",
+  },
+  {
+    id: "guildford",
+    name: "Guildford Town Centre chargers",
+    city: "Surrey",
+    address: "10355 152 St, Surrey",
+    lat: 49.1894,
+    lng: -122.8047,
+    operator: "Retail / charging network",
+    plugs: 14,
+    fastChargers: 1,
+    level2: 13,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public mall parking",
+    fleetUse: "Good east Surrey charging coverage near Highway 1 access.",
+  },
+  {
+    id: "lonsdale-quay",
+    name: "Lonsdale Quay charging area",
+    city: "North Vancouver",
+    address: "123 Carrie Cates Ct, North Vancouver",
+    lat: 49.3102,
+    lng: -123.0838,
+    operator: "Public / municipal network",
+    plugs: 6,
+    fastChargers: 1,
+    level2: 5,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public waterfront area",
+    fleetUse: "North Shore charging point near ferry, service, and municipal routes.",
+  },
+  {
+    id: "park-royal",
+    name: "Park Royal charging cluster",
+    city: "West Vancouver",
+    address: "2002 Park Royal S, West Vancouver",
+    lat: 49.3251,
+    lng: -123.1403,
+    operator: "Retail / charging network",
+    plugs: 12,
+    fastChargers: 1,
+    level2: 11,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public mall parking",
+    fleetUse: "West Vancouver node for service fleets crossing the Lions Gate corridor.",
+  },
+  {
+    id: "coquitlam-centre",
+    name: "Coquitlam Centre chargers",
+    city: "Coquitlam",
+    address: "2929 Barnet Hwy, Coquitlam",
+    lat: 49.2795,
+    lng: -122.7984,
+    operator: "Retail / charging network",
+    plugs: 16,
+    fastChargers: 2,
+    level2: 14,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public mall parking",
+    fleetUse: "Tri-Cities charging anchor near Barnet and Lougheed corridors.",
+  },
+  {
+    id: "new-west-anvil",
+    name: "New Westminster civic charging area",
+    city: "New Westminster",
+    address: "777 Columbia St, New Westminster",
+    lat: 49.2015,
+    lng: -122.9126,
+    operator: "Municipal / public network",
+    plugs: 6,
+    fastChargers: 1,
+    level2: 5,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public civic / downtown parking",
+    fleetUse: "Central point for fleet routes between Burnaby, Surrey, and Coquitlam.",
+  },
+  {
+    id: "tsawwassen-mills",
+    name: "Tsawwassen Mills charging cluster",
+    city: "Delta",
+    address: "5000 Canoe Pass Way, Delta",
+    lat: 49.0397,
+    lng: -123.0854,
+    operator: "Retail / highway charging network",
+    plugs: 18,
+    fastChargers: 4,
+    level2: 14,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO", "NACS/Tesla"],
+    access: "Public mall parking",
+    fleetUse: "Strategic South Delta and ferry-corridor charging point.",
+  },
+  {
+    id: "langley-events",
+    name: "Langley Events Centre chargers",
+    city: "Langley",
+    address: "7888 200 St, Langley",
+    lat: 49.1452,
+    lng: -122.6668,
+    operator: "Public / destination network",
+    plugs: 8,
+    fastChargers: 1,
+    level2: 7,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public event parking",
+    fleetUse: "Useful eastern Metro Vancouver range-extension point.",
+  },
+  {
+    id: "port-moody-city-hall",
+    name: "Port Moody civic chargers",
+    city: "Port Moody",
+    address: "100 Newport Dr, Port Moody",
+    lat: 49.2833,
+    lng: -122.8313,
+    operator: "Municipal / public network",
+    plugs: 6,
+    fastChargers: 0,
+    level2: 6,
+    connectorTypes: ["Level 2", "J1772"],
+    access: "Public civic parking",
+    fleetUse: "Supports Tri-Cities service routes and lower-speed charging needs.",
+  },
+  {
+    id: "victoria-downtown",
+    name: "Downtown Victoria charging cluster",
+    city: "Victoria",
+    address: "Douglas St & Pandora Ave, Victoria",
+    lat: 48.4284,
+    lng: -123.3656,
+    operator: "Municipal / public network",
+    plugs: 18,
+    fastChargers: 3,
+    level2: 15,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public downtown parking",
+    fleetUse: "Vancouver Island anchor for municipal, service, and government fleet routes.",
+  },
+  {
+    id: "nanaimo-terminal",
+    name: "Nanaimo ferry corridor chargers",
+    city: "Nanaimo",
+    address: "Departure Bay / downtown Nanaimo",
+    lat: 49.1659,
+    lng: -123.9401,
+    operator: "Highway / public network",
+    plugs: 14,
+    fastChargers: 4,
+    level2: 10,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO", "NACS/Tesla"],
+    access: "Public corridor charging",
+    fleetUse: "Useful island logistics node between ferry traffic, Nanaimo, and central-island routes.",
+  },
+  {
+    id: "kelowna-downtown",
+    name: "Kelowna urban charging hub",
+    city: "Kelowna",
+    address: "Queensway / downtown Kelowna",
+    lat: 49.8880,
+    lng: -119.4960,
+    operator: "Public / municipal network",
+    plugs: 20,
+    fastChargers: 4,
+    level2: 16,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public city parking",
+    fleetUse: "Okanagan anchor for regional service, tourism, delivery, and municipal fleets.",
+  },
+  {
+    id: "kamloops-highway",
+    name: "Kamloops highway charging hub",
+    city: "Kamloops",
+    address: "Trans-Canada Hwy / Aberdeen area, Kamloops",
+    lat: 50.6745,
+    lng: -120.3273,
+    operator: "Highway / public network",
+    plugs: 18,
+    fastChargers: 6,
+    level2: 12,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO", "NACS/Tesla"],
+    access: "Public highway charging",
+    fleetUse: "Interior corridor hub for longer-distance service routes and fleet range confidence.",
+  },
+  {
+    id: "whistler-village",
+    name: "Whistler Village charging cluster",
+    city: "Whistler",
+    address: "Village Gate Blvd, Whistler",
+    lat: 50.1163,
+    lng: -122.9574,
+    operator: "Destination / public network",
+    plugs: 16,
+    fastChargers: 3,
+    level2: 13,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public destination parking",
+    fleetUse: "Sea-to-Sky destination node for shuttle, tourism, and municipal fleet planning.",
+  },
+  {
+    id: "prince-george",
+    name: "Prince George regional charging hub",
+    city: "Prince George",
+    address: "15th Ave / downtown Prince George",
+    lat: 53.9171,
+    lng: -122.7497,
+    operator: "Public / highway network",
+    plugs: 16,
+    fastChargers: 5,
+    level2: 11,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public regional charging",
+    fleetUse: "Northern BC anchor for regional fleet coverage and longer-distance public-sector routes.",
+  },
+  {
+    id: "revelstoke-transcanada",
+    name: "Revelstoke Trans-Canada charging node",
+    city: "Revelstoke",
+    address: "Victoria Rd / Trans-Canada Hwy, Revelstoke",
+    lat: 50.9981,
+    lng: -118.1957,
+    operator: "Highway / public network",
+    plugs: 12,
+    fastChargers: 4,
+    level2: 8,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public highway charging",
+    fleetUse: "Mountain corridor support for Trans-Canada service routes and range-risk planning.",
+  },
+  {
+    id: "cranbrook-highway",
+    name: "Cranbrook Kootenay charging hub",
+    city: "Cranbrook",
+    address: "Victoria Ave N / Highway 95A, Cranbrook",
+    lat: 49.5120,
+    lng: -115.7694,
+    operator: "Highway / public network",
+    plugs: 10,
+    fastChargers: 3,
+    level2: 7,
+    connectorTypes: ["Level 2", "CCS", "CHAdeMO"],
+    access: "Public highway charging",
+    fleetUse: "Kootenay coverage point for regional fleets operating outside the Lower Mainland.",
+  },
+  {
+    id: "terrace-regional",
+    name: "Terrace northwest charging node",
+    city: "Terrace",
+    address: "Lakelse Ave, Terrace",
+    lat: 54.5182,
+    lng: -128.6032,
+    operator: "Public / regional network",
+    plugs: 8,
+    fastChargers: 2,
+    level2: 6,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public regional charging",
+    fleetUse: "Northwest BC planning node for regional service, utility, and municipal operations.",
+  },
+  {
+    id: "fort-st-john",
+    name: "Fort St. John charging node",
+    city: "Fort St. John",
+    address: "100 St / Alaska Hwy, Fort St. John",
+    lat: 56.2524,
+    lng: -120.8464,
+    operator: "Public / regional network",
+    plugs: 8,
+    fastChargers: 2,
+    level2: 6,
+    connectorTypes: ["Level 2", "CCS"],
+    access: "Public regional charging",
+    fleetUse: "Northeast BC coverage signal for resource, service, and public-sector fleet planning.",
+  },
+];
+
+const EV_NETWORK_SOURCE_NOTE = "BC-wide infrastructure planning view. Locations and charger counts are representative planning clusters and should be validated against NRCan or Open Charge Map before final client recommendations. Real-time charger availability is not included.";
+const EV_STATION_PHOTO = {
+  src: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/EV_Charging_Station_%2853857454477%29.jpg/1280px-EV_Charging_Station_%2853857454477%29.jpg",
+  alt: "Real electric vehicle charging station with an EV connected",
+  credit: "Photo: Ajay Suresh, CC BY 2.0",
+};
+
+const FORD_REFERENCE_LINKS = {
+  "F-150": "https://www.ford.ca/trucks/f150/360/",
+  "F-350": "https://www.ford.ca/trucks/super-duty/",
+  "F-450": "https://www.ford.ca/trucks/super-duty/",
+};
+
+const PROJECT_TEAM = [
+  { name: "Saad", role: "Scenario model and dashboard" },
+  { name: "Ocean", role: "Research and validation" },
+  { name: "Rostislav", role: "Analysis and deliverables" },
+];
+
+const BCIT_GUIDANCE_TEAM = [
+  { label: "BCIT teaching team", value: "Faculty guidance and project oversight" },
+  { label: "Industry partner", value: "BlueForce Energy" },
 ];
 
 const explanations = {
@@ -1023,6 +1467,73 @@ function ControlSlider({ label, value, min, max, step, format, onChange }) {
   );
 }
 
+function EVNetworkMap({ stations, selectedStation, onSelectStation }) {
+  const mapRef = useRef(null);
+  const containerRef = useRef(null);
+  const markerLayerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return undefined;
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: true,
+    }).setView([53.6, -125.2], 5);
+
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 18,
+      attribution: "Tiles &copy; Esri, OpenStreetMap contributors",
+    }).addTo(map);
+
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    L.control.attribution({ position: "bottomleft", prefix: false }).addTo(map);
+    markerLayerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
+
+    setTimeout(() => map.invalidateSize(), 120);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markerLayerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = markerLayerRef.current;
+    if (!map || !layer) return;
+    layer.clearLayers();
+
+    stations.forEach((station) => {
+      const fastClass = station.fastChargers > 0 ? " fast" : "";
+      const selectedClass = selectedStation?.id === station.id ? " selected" : "";
+      const icon = L.divIcon({
+        className: `ev-map-pin${fastClass}${selectedClass}`,
+        html: `<span>${station.fastChargers > 0 ? "⚡" : "•"}</span>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      });
+
+      const marker = L.marker([station.lat, station.lng], { icon }).addTo(layer);
+      marker.on("click", () => onSelectStation(station));
+    });
+
+    if (stations.length) {
+      const bounds = L.latLngBounds(stations.map((station) => [station.lat, station.lng]));
+      map.fitBounds(bounds, { padding: [42, 42], maxZoom: 12 });
+    }
+  }, [stations, selectedStation, onSelectStation]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedStation) return;
+    map.flyTo([selectedStation.lat, selectedStation.lng], Math.max(map.getZoom(), 13), { duration: 0.7 });
+  }, [selectedStation]);
+
+  return <div className="ev-map-canvas" ref={containerRef} aria-label="Greater Vancouver EV station map" />;
+}
+
 function App() {
   const data = useScenarioData();
   const [activeView, setActiveView] = useState("overview");
@@ -1031,6 +1542,13 @@ function App() {
   const [horizon, setHorizon] = useState(10);
   const [ownershipMode, setOwnershipMode] = useState("service");
   const [selectedType, setSelectedType] = useState("Retrofit");
+  const [stationSearch, setStationSearch] = useState("");
+  const [stationCity, setStationCity] = useState("All");
+  const [selectedStation, setSelectedStation] = useState(GREATER_VANCOUVER_STATIONS[0]);
+  const [isUnlocked, setIsUnlocked] = useState(() => window.localStorage.getItem("blueforce-demo-unlocked") === "true");
+  const [loginUnlocking, setLoginUnlocking] = useState(false);
+  const [loginCode, setLoginCode] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [focusMode, setFocusMode] = useState("cost");
   const [detailOpen, setDetailOpen] = useState(null);
   const [tunerIndexByScenario, setTunerIndexByScenario] = useState(DEFAULT_TUNER_INDEX);
@@ -1259,6 +1777,35 @@ function App() {
     ];
   }, [isCarbonScenario, vehicle, horizon, scenario, retrofitTunedRow, emissionsAvoidedVsIce, activeSavingsVsIce, activeScenarioLabel]);
 
+  const stationCities = useMemo(
+    () => ["All", ...Array.from(new Set(GREATER_VANCOUVER_STATIONS.map((station) => station.city))).sort()],
+    [],
+  );
+  const filteredStations = useMemo(() => {
+    const query = stationSearch.trim().toLowerCase();
+    return GREATER_VANCOUVER_STATIONS.filter((station) => {
+      const matchesCity = stationCity === "All" || station.city === stationCity;
+      const text = `${station.name} ${station.city} ${station.address} ${station.operator} ${station.connectorTypes.join(" ")}`.toLowerCase();
+      return matchesCity && (!query || text.includes(query));
+    });
+  }, [stationSearch, stationCity]);
+  const evNetworkStats = useMemo(() => {
+    const cities = new Set(filteredStations.map((station) => station.city));
+    return {
+      stations: filteredStations.length,
+      plugs: filteredStations.reduce((total, station) => total + station.plugs, 0),
+      fast: filteredStations.reduce((total, station) => total + station.fastChargers, 0),
+      level2: filteredStations.reduce((total, station) => total + station.level2, 0),
+      cities: cities.size,
+    };
+  }, [filteredStations]);
+
+  useEffect(() => {
+    if (filteredStations.length && !filteredStations.some((station) => station.id === selectedStation?.id)) {
+      setSelectedStation(filteredStations[0]);
+    }
+  }, [filteredStations, selectedStation]);
+
   if (!data || !retrofit || !selectedRow) {
     return (
       <div className="loading-screen">
@@ -1434,6 +1981,15 @@ function App() {
         { label: "Current km case", value: `${storyCarbonKm.toLocaleString()} km/year` },
         { label: "Scope", value: "Credit revenue only" },
       ],
+    },
+    team: {
+      title: "Project team and oversight",
+      body: "This capstone dashboard was developed as a BCIT student research project for BlueForce Energy. The credit is intentionally kept in a quiet global layer so the app still feels client-facing.",
+      takeaway: "Add exact BCIT instructor/supervisor names here once the team confirms how they should be credited.",
+      facts: [
+        ...PROJECT_TEAM.map((member) => ({ label: member.name, value: member.role })),
+        ...BCIT_GUIDANCE_TEAM,
+      ],
     }
   };
 
@@ -1561,6 +2117,7 @@ function App() {
     return item;
   });
 
+
   const selectedPage = navItems.find((item) => item.id === activeView) || navItems[0];
 
   const PageHeader = ({ title, kicker }) => (
@@ -1665,6 +2222,17 @@ function App() {
   const renderComparison = () => (
     <>
       <PageHeader title="Vehicle comparison" kicker="Three pathways, same truck class." />
+      <article className="yana-card ford-reference-card">
+        <div>
+          <span>Official vehicle reference</span>
+          <h3>{vehicle === "F-150" ? "Ford F-150 360 viewer" : "Ford Super Duty reference"}</h3>
+          <p>{vehicle === "F-150" ? "Open Ford's official 360 viewer in a separate tab. Ford blocks embedded viewing, so the in-app model stays representative and client-safe." : "Open Ford's official Super Duty reference in a separate tab. The in-app model remains a licensed representative class view."}</p>
+        </div>
+        <a href={FORD_REFERENCE_LINKS[vehicle]} target="_blank" rel="noreferrer">
+          <ExternalLink size={17} />
+          Open official Ford view
+        </a>
+      </article>
       <section className="yana-comparison-grid">
         {comparisonCards.map((row) => (
           <article key={row.model} className={`yana-path-card ${row.type === best?.type ? "best" : ""} ${row.type === selectedType ? "selected" : ""}`} onClick={() => setSelectedType(row.type)}>
@@ -1765,6 +2333,119 @@ function App() {
     </>
   );
 
+  const renderEVNetwork = () => {
+    const activeStation = selectedStation || filteredStations[0] || GREATER_VANCOUVER_STATIONS[0];
+    const priorityStations = [
+      activeStation,
+      ...filteredStations.filter((station) => station.id !== activeStation.id),
+    ].slice(0, 6);
+    return (
+      <>
+        <PageHeader title="BC charging network" kicker="Province-wide infrastructure view for customer and funding discussions." />
+        <section className="ev-network-shell">
+          <article className="yana-card ev-network-map-card">
+            <div className="ev-map-toolbar">
+              <div className="ev-map-search">
+                <Search size={17} />
+                <input
+                  value={stationSearch}
+                  onChange={(event) => setStationSearch(event.target.value)}
+                  placeholder="Search station, city, connector, operator"
+                  aria-label="Search EV stations"
+                />
+              </div>
+              <select value={stationCity} onChange={(event) => setStationCity(event.target.value)} aria-label="Filter EV stations by city">
+                {stationCities.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </div>
+            <EVNetworkMap stations={filteredStations} selectedStation={activeStation} onSelectStation={setSelectedStation} />
+            <div className="ev-map-hint">
+              <span>Drag map</span>
+              <span>Scroll to zoom</span>
+              <span>Click pins for station details</span>
+            </div>
+          </article>
+          <aside className="ev-network-side">
+            <article className="yana-card ev-station-detail">
+              <span className="ev-pill">Selected station</span>
+              <h3>{activeStation.name}</h3>
+              <p>{activeStation.address}</p>
+              <dl>
+                <div><dt>Operator</dt><dd>{activeStation.operator}</dd></div>
+                <div><dt>Total plugs</dt><dd>{activeStation.plugs}</dd></div>
+                <div><dt>DC fast</dt><dd>{activeStation.fastChargers}</dd></div>
+                <div><dt>Level 2</dt><dd>{activeStation.level2}</dd></div>
+                <div><dt>Connectors</dt><dd>{activeStation.connectorTypes.join(", ")}</dd></div>
+              </dl>
+              <div className="ev-glass-note">
+                <Zap size={17} />
+                <span>{activeStation.fleetUse}</span>
+              </div>
+            </article>
+            <article className="yana-card ev-network-kpis">
+              <div><span>Stations shown</span><strong>{evNetworkStats.stations}</strong></div>
+              <div><span>Total plugs</span><strong>{evNetworkStats.plugs}</strong></div>
+              <div><span>DC fast</span><strong>{evNetworkStats.fast}</strong></div>
+              <div><span>Level 2</span><strong>{evNetworkStats.level2}</strong></div>
+              <div><span>Cities covered</span><strong>{evNetworkStats.cities}</strong></div>
+            </article>
+            <article className="yana-card ev-station-picker">
+              <div>
+                <span>Quick results</span>
+                <strong>{filteredStations.length} locations</strong>
+              </div>
+              {priorityStations.map((station) => (
+                <button key={station.id} type="button" className={station.id === activeStation.id ? "active" : ""} onClick={() => setSelectedStation(station)}>
+                  <MapPin size={15} />
+                  <span>{station.name}</span>
+                  <small>{station.city} · {station.plugs} plugs</small>
+                </button>
+              ))}
+            </article>
+          </aside>
+        </section>
+        <p className="ev-source-note">{EV_NETWORK_SOURCE_NOTE}</p>
+      </>
+    );
+  };
+
+  const renderStakeholders = () => (
+    <>
+      <PageHeader title="Stakeholder view" kicker="Two clean lenses for the same retrofit decision." />
+      <section className="stakeholder-grid">
+        <article className="yana-card stakeholder-card customer-lens">
+          <span>Customer lens</span>
+          <h3>Will this lower fleet cost?</h3>
+          <div className="stakeholder-metric"><small>{vehicle} 10-year savings</small><strong>{currency(activeSavingsVsIce)}</strong></div>
+          <ul>
+            <li>Lowest lifecycle pathway: <b>{best?.type || "Pending"}</b></li>
+            <li>Breakeven signal: <b>{breakevenText}</b></li>
+            <li>Operating story: lower fuel exposure and simplified maintenance assumptions.</li>
+          </ul>
+        </article>
+        <article className="yana-card stakeholder-card funding-lens">
+          <span>Government / funding lens</span>
+          <h3>Does this justify support?</h3>
+          <div className="stakeholder-metric"><small>Lifecycle CO2e avoided</small><strong>{tonnes(emissionsAvoidedVsIce)}</strong></div>
+          <ul>
+            <li>Carbon impact is tracked separately from lifecycle cost.</li>
+            <li>Manufacturing emissions are included from Year 0.</li>
+            <li>Funding-ready gap: confirm credit ownership and battery assumptions.</li>
+          </ul>
+        </article>
+      </section>
+      <section className="stakeholder-proof-grid">
+        <article className="yana-card proof-card"><CircleDollarSign size={18} /><span>Financial proof</span><strong>{currency(retrofitTunedRow?.tunedCost ?? 0)}</strong><small>Retrofit lifecycle cost at Year {horizon}</small></article>
+        <article className="yana-card proof-card"><Leaf size={18} /><span>Climate proof</span><strong>{tonnes(retrofitTunedRow?.lifecycleEmissions ?? 0)}</strong><small>Retrofit lifecycle emissions</small></article>
+        <article className="yana-card proof-card"><MapPin size={18} /><span>Infrastructure proof</span><strong>{evNetworkStats.cities} BC cities</strong><small>Representative charging network view</small></article>
+      </section>
+      <article className="yana-card stakeholder-note-card">
+        <span>How to use this page</span>
+        <p>Use the customer lens when discussing fleet purchase decisions. Use the funding lens when discussing emissions reduction, grant support, or public-sector value. This page is intentionally a test layer and can be removed later.</p>
+      </article>
+    </>
+  );
+
   const renderMethodology = () => (
     <>
       <PageHeader title="Methodology" kicker="Plain-language formulas behind the dashboard." />
@@ -1785,8 +2466,45 @@ function App() {
     scenario: renderScenario,
     breakeven: renderBreakeven,
     carbon: renderCarbon,
+    "ev-network": renderEVNetwork,
+    stakeholders: renderStakeholders,
     methodology: renderMethodology,
   };
+
+  const handleLoginSubmit = (event) => {
+    event.preventDefault();
+    const normalizedCode = loginCode.trim().toLowerCase();
+    if (["blueforce", "bcit", "capstone"].includes(normalizedCode)) {
+      setLoginError("");
+      setLoginUnlocking(true);
+      window.setTimeout(() => {
+        window.localStorage.setItem("blueforce-demo-unlocked", "true");
+        setIsUnlocked(true);
+      }, 850);
+      return;
+    }
+    setLoginError("Use the demo access code: blueforce");
+  };
+
+  const handleLockApp = () => {
+    window.localStorage.removeItem("blueforce-demo-unlocked");
+    setLoginUnlocking(false);
+    setLoginCode("");
+    setLoginError("");
+    setIsUnlocked(false);
+  };
+
+  if (!isUnlocked) {
+    return (
+      <LoginWall
+        loginCode={loginCode}
+        loginError={loginError}
+        isUnlocking={loginUnlocking}
+        onCodeChange={setLoginCode}
+        onSubmit={handleLoginSubmit}
+      />
+    );
+  }
 
   return (
     <main className="yana-app-shell">
@@ -1800,7 +2518,10 @@ function App() {
             </button>
           ))}
         </nav>
-        <div className="yana-sidebar-foot"><img src="/assets/logos/bcit-logo.svg" alt="BCIT" /><span>BCIT Capstone</span></div>
+        <button className="yana-sidebar-foot" type="button" onClick={() => setDetailOpen("team")} title="View project team">
+          <img src="/assets/logos/bcit-logo.svg" alt="BCIT" />
+          <span>BCIT Capstone</span>
+        </button>
       </aside>
       <section className="yana-workspace">
         <header className="yana-topbar compact-topbar">
@@ -1815,6 +2536,10 @@ function App() {
               ))}
             </div>
           </div>
+          <button className="topbar-lock-button" type="button" onClick={handleLockApp} title="Lock app and return to sign in">
+            <LogOut size={16} />
+            Lock
+          </button>
         </header>
         <div className="yana-title-row">
           <div><p>{today}</p><h1>Retrofit Transition Decision Platform</h1></div>
@@ -1823,6 +2548,64 @@ function App() {
         <section className="yana-page">{(pageContent[activeView] || renderOverview)()}</section>
       </section>
       <LayerDrawer detail={detailOpen ? detailContent[detailOpen] : null} onClose={() => setDetailOpen(null)} />
+    </main>
+  );
+}
+
+function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit }) {
+  return (
+    <main className={isUnlocking ? "login-wall-shell unlocking" : "login-wall-shell"}>
+      <section className="login-stage" aria-label="Secure BlueForce access">
+        <div className="login-panel-left">
+          <div className="login-brand-row">
+            <img src="/assets/logos/blueforce-logo.png" alt="BlueForce Energy" />
+            <span>BCIT Capstone</span>
+          </div>
+          <div className="login-security-mark">
+            <ShieldCheck size={22} />
+          </div>
+          <p className="login-kicker">Secure scenario workspace</p>
+          <h1>Sign in</h1>
+          <p className="login-copy">Access the retrofit decision platform for lifecycle cost, emissions, breakeven, charging network, and funding views.</p>
+          <form className="login-form" onSubmit={onSubmit}>
+            <label htmlFor="access-code">Access code</label>
+            <div className="login-input-wrap">
+              <LockKeyhole size={17} />
+              <input
+                id="access-code"
+                value={loginCode}
+                onChange={(event) => onCodeChange(event.target.value)}
+                type="password"
+                placeholder="Enter demo code"
+                autoComplete="off"
+              />
+            </div>
+            {loginError && <small className="login-error">{loginError}</small>}
+            <button type="submit" disabled={isUnlocking}>
+              <LogIn size={17} />
+              {isUnlocking ? "Unlocking" : "Enter platform"}
+            </button>
+          </form>
+          <p className="login-demo-note">Demo code: blueforce</p>
+        </div>
+        <div className="login-panel-right" aria-hidden="true">
+          <div className="login-visual-grid" />
+          <div className="login-vehicle-orbit">
+            <div className="login-orbit-ring" />
+            <div className="login-truck-shape"><span /></div>
+          </div>
+          <div className="login-visual-copy">
+            <span>BlueForce secure model</span>
+            <h2>Fleet transition data, protected before review.</h2>
+            <p>Cost, emissions, charging infrastructure, and funding signals in one controlled workspace.</p>
+          </div>
+          <div className="login-mini-metrics">
+            <div><span>Cost</span><strong>10Y</strong></div>
+            <div><span>CO2e</span><strong>Live</strong></div>
+            <div><span>BC map</span><strong>Ready</strong></div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

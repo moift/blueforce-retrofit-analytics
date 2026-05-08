@@ -7566,3 +7566,65 @@ button.yana-sidebar-foot:hover {
     width: 100%;
   }
 }
+
+/* Concise secure-entry polish. */
+.login-stage {
+  min-height: min(650px, calc(100vh - 56px));
+  width: min(100%, 1080px);
+}
+
+.login-panel-left {
+  padding: clamp(30px, 4.2vw, 50px);
+}
+
+.login-security-mark {
+  margin-top: 34px !important;
+}
+
+.login-panel-left h1 {
+  max-width: 360px;
+  font-size: clamp(2.85rem, 5.4vw, 4.55rem) !important;
+}
+
+.login-copy {
+  max-width: 320px !important;
+  margin-top: 14px !important;
+}
+
+.login-form {
+  max-width: 360px;
+}
+
+.login-visual-copy {
+  max-width: 330px !important;
+  bottom: clamp(36px, 7vw, 72px) !important;
+}
+
+.login-visual-copy h2 {
+  max-width: 330px;
+  font-size: clamp(1.65rem, 3vw, 2.45rem) !important;
+}
+
+.login-visual-copy p {
+  max-width: 300px !important;
+}
+
+.login-mini-metrics {
+  display: none !important;
+}
+
+.topbar-lock-button {
+  min-height: 34px !important;
+  height: 34px;
+  gap: 5px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  font-size: .72rem !important;
+  font-weight: 860 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.86), 0 10px 24px rgba(17,24,39,.035) !important;
+}
+
+.topbar-lock-button svg {
+  width: 14px;
+  height: 14px;
+}

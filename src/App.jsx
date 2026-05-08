@@ -2537,8 +2537,8 @@ function App() {
             </div>
           </div>
           <button className="topbar-lock-button" type="button" onClick={handleLockApp} title="Lock app and return to sign in">
-            <LogOut size={16} />
-            Lock
+            <LogOut size={15} />
+            <span>Lock</span>
           </button>
         </header>
         <div className="yana-title-row">
@@ -2564,9 +2564,9 @@ function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit 
           <div className="login-security-mark">
             <ShieldCheck size={22} />
           </div>
-          <p className="login-kicker">Secure scenario workspace</p>
-          <h1>Sign in</h1>
-          <p className="login-copy">Access the retrofit decision platform for lifecycle cost, emissions, breakeven, charging network, and funding views.</p>
+          <p className="login-kicker">Secure access</p>
+          <h1>Decision platform</h1>
+          <p className="login-copy">Enter the access code to open the BlueForce retrofit workspace.</p>
           <form className="login-form" onSubmit={onSubmit}>
             <label htmlFor="access-code">Access code</label>
             <div className="login-input-wrap">
@@ -2595,14 +2595,9 @@ function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit 
             <div className="login-truck-shape"><span /></div>
           </div>
           <div className="login-visual-copy">
-            <span>BlueForce secure model</span>
-            <h2>Fleet transition data, protected before review.</h2>
-            <p>Cost, emissions, charging infrastructure, and funding signals in one controlled workspace.</p>
-          </div>
-          <div className="login-mini-metrics">
-            <div><span>Cost</span><strong>10Y</strong></div>
-            <div><span>CO2e</span><strong>Live</strong></div>
-            <div><span>BC map</span><strong>Ready</strong></div>
+            <span>BlueForce model</span>
+            <h2>Protected fleet transition workspace.</h2>
+            <p>Cost, emissions, infrastructure, and funding views.</p>
           </div>
         </div>
       </section>

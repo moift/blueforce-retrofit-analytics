@@ -5780,3 +5780,485 @@ button.yana-kpi-card:hover,
   background: #18181B;
   box-shadow: 0 14px 30px rgba(24,24,27,.22);
 }
+
+
+/* Integrated decision-platform refinement pass. */
+.yana-app-shell {
+  grid-template-columns: 190px minmax(0, 1fr) !important;
+}
+
+.yana-sidebar {
+  padding: 18px 14px !important;
+  justify-items: stretch !important;
+  background: rgba(255,255,255,.82) !important;
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.yana-sidebar-logo img {
+  width: 96px !important;
+}
+
+.yana-sidebar nav {
+  width: 100% !important;
+  gap: 9px !important;
+}
+
+.yana-sidebar button {
+  width: 100% !important;
+  min-height: 52px !important;
+  height: 52px !important;
+  padding: 0 14px !important;
+  display: flex !important;
+  justify-content: flex-start;
+  gap: 12px !important;
+  border: 1px solid rgba(229,231,235,.78) !important;
+  border-radius: 19px !important;
+  background: rgba(255,255,255,.48) !important;
+  color: #737782 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 12px 28px rgba(17,24,39,.035);
+  overflow: hidden !important;
+}
+
+.yana-sidebar button::before {
+  display: none !important;
+}
+
+.yana-sidebar button span {
+  position: static !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  font-size: .79rem !important;
+  font-weight: 760 !important;
+  line-height: 1.05 !important;
+  letter-spacing: -.01em;
+}
+
+.yana-sidebar button:hover,
+.yana-sidebar button.active {
+  background: rgba(255,255,255,.86) !important;
+  color: #111827 !important;
+  transform: translateY(-1px);
+}
+
+.yana-sidebar-foot {
+  width: 100% !important;
+  height: 56px !important;
+  justify-content: flex-start !important;
+  gap: 10px;
+}
+
+.yana-sidebar-foot span {
+  display: inline !important;
+}
+
+.compact-topbar {
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.full-top-controls {
+  width: min(100%, 980px);
+  display: grid !important;
+  grid-template-columns: 112px minmax(260px, 1fr) 365px;
+  align-items: center;
+  gap: 14px !important;
+}
+
+.top-year-control {
+  padding: 8px 14px 10px;
+  border: 1px solid #E8E8EA;
+  border-radius: 18px;
+  background: #FFFFFF;
+  box-shadow: 0 16px 34px rgba(17,24,39,.045);
+}
+
+.top-year-control .live-control {
+  gap: 4px;
+}
+
+.top-year-control .live-control span {
+  font-size: .68rem;
+}
+
+.top-year-control .smooth-slider {
+  height: 22px;
+}
+
+.top-year-control .smooth-slider-thumb {
+  width: 20px;
+  height: 20px;
+  border-width: 4px;
+}
+
+.top-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid #E8E8EA;
+  border-radius: 18px;
+  background: #FFFFFF;
+  box-shadow: 0 16px 34px rgba(17,24,39,.045);
+}
+
+.top-mode-toggle button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #71717A;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.top-mode-toggle button:hover,
+.top-mode-toggle button.active {
+  background: #18181B;
+  color: #FFFFFF;
+}
+
+.yana-page-head {
+  align-items: start !important;
+}
+
+.yana-card-head p {
+  max-width: 430px;
+  margin: 0;
+  color: #737782;
+  font-size: .86rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.scenario-explain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.scenario-note {
+  padding: 18px 20px;
+}
+
+.scenario-note span,
+.method-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: #9CA3AF;
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.scenario-note p,
+.method-card p {
+  margin: 0;
+  color: #374151;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.mini-method-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.mini-method-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #EFEFF0;
+}
+
+.mini-method-list dt {
+  color: #71717A;
+  font-weight: 750;
+}
+
+.mini-method-list dd {
+  margin: 0;
+  color: #18181B;
+  font-weight: 850;
+}
+
+.methodology-clean-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.method-card {
+  padding: 22px;
+}
+
+.method-card code {
+  display: block;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #F6F7F8;
+  color: #111827;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: .82rem;
+  white-space: normal;
+}
+
+.yana-path-card .vehicle-3d-viewer {
+  border-color: rgba(229,231,235,.92);
+}
+
+@media (max-width: 1120px) {
+  .full-top-controls,
+  .scenario-explain-grid,
+  .methodology-clean-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .yana-app-shell {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* QC polish: responsive top toolbar + calmer Apple-like glass finish. */
+:root {
+  --glass-surface: rgba(255,255,255,.68);
+  --glass-surface-strong: rgba(255,255,255,.82);
+  --glass-border: rgba(255,255,255,.72);
+  --glass-shadow: 0 20px 55px rgba(15,23,42,.075);
+}
+
+body {
+  background:
+    radial-gradient(circle at 74% 4%, rgba(229,236,246,.78), transparent 34%),
+    radial-gradient(circle at 0% 88%, rgba(228,237,242,.68), transparent 36%),
+    linear-gradient(135deg, #F8FAFC 0%, #F3F6F9 48%, #FAFAFA 100%) !important;
+}
+
+.yana-workspace {
+  position: relative;
+  overflow-x: clip;
+}
+
+.yana-workspace::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 0 52%, rgba(255,255,255,.26) 58%, transparent 66%);
+  opacity: .42;
+  animation: softGlassSweep 12s ease-in-out infinite;
+}
+
+@keyframes softGlassSweep {
+  0%, 100% { transform: translateX(-18%); opacity: .22; }
+  50% { transform: translateX(8%); opacity: .42; }
+}
+
+.compact-topbar {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-end !important;
+  overflow: visible;
+}
+
+.full-top-controls {
+  width: auto !important;
+  max-width: min(100%, 840px) !important;
+  margin-left: auto;
+  display: grid !important;
+  grid-template-columns: minmax(96px, 112px) minmax(190px, 280px) minmax(270px, 360px) !important;
+  align-items: center;
+  gap: 10px !important;
+}
+
+.yana-filter-row select,
+.top-year-control,
+.top-mode-toggle,
+.yana-card,
+.yana-kpi-card,
+.yana-path-card,
+.yana-recommendation,
+.yana-breakeven-summary,
+.method-card,
+.scenario-note {
+  background: var(--glass-surface-strong) !important;
+  border-color: rgba(226,232,240,.76) !important;
+  box-shadow: inset 0 1px 0 var(--glass-border), var(--glass-shadow) !important;
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.top-year-control,
+.top-mode-toggle {
+  min-width: 0;
+  border-radius: 19px !important;
+}
+
+.top-mode-toggle {
+  grid-template-columns: repeat(3, minmax(78px, 1fr)) !important;
+  overflow: hidden;
+}
+
+.top-mode-toggle button {
+  min-width: 0;
+  padding: 0 10px;
+  white-space: nowrap;
+  font-size: .9rem;
+}
+
+.top-mode-toggle button.active {
+  box-shadow: 0 10px 24px rgba(17,24,39,.16);
+}
+
+.yana-filter-row select {
+  width: 100%;
+  min-width: 0;
+  border-radius: 17px !important;
+}
+
+.top-year-control .live-control > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.yana-sidebar {
+  background: rgba(255,255,255,.72) !important;
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.75), 14px 0 40px rgba(15,23,42,.025);
+}
+
+.yana-sidebar button {
+  background: rgba(255,255,255,.54) !important;
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.yana-sidebar button:hover,
+.yana-sidebar button.active {
+  background: rgba(255,255,255,.86) !important;
+}
+
+.yana-title-row {
+  margin-top: 26px !important;
+}
+
+.yana-page {
+  max-width: 1480px;
+}
+
+.yana-main-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 300px) !important;
+}
+
+.yana-chart-card {
+  overflow: hidden;
+}
+
+.yana-kpi-card,
+.yana-card,
+.yana-path-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.yana-kpi-card:hover,
+.yana-card:hover,
+.yana-path-card:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.86), 0 24px 62px rgba(15,23,42,.09) !important;
+}
+
+@media (max-width: 1320px) {
+  .full-top-controls {
+    max-width: min(100%, 760px) !important;
+    grid-template-columns: 98px minmax(170px, 240px) minmax(250px, 1fr) !important;
+    gap: 8px !important;
+  }
+  .top-mode-toggle button {
+    font-size: .82rem;
+    padding: 0 7px;
+  }
+  .yana-workspace {
+    padding-inline: 22px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .yana-app-shell {
+    grid-template-columns: 166px minmax(0, 1fr) !important;
+  }
+  .full-top-controls {
+    max-width: 100% !important;
+    grid-template-columns: 92px minmax(160px, 1fr) !important;
+  }
+  .top-mode-toggle {
+    grid-column: 1 / -1;
+  }
+  .yana-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .full-top-controls {
+    grid-template-columns: 1fr !important;
+  }
+  .top-mode-toggle {
+    grid-column: auto;
+  }
+  .yana-workspace {
+    overflow-x: hidden;
+  }
+}
+
+/* QC polish: keep navigation readable and prevent medium-width clipping. */
+@media (max-width: 1180px) and (min-width: 761px) {
+  .yana-app-shell {
+    grid-template-columns: 176px minmax(0, 1fr) !important;
+  }
+  .yana-sidebar button span,
+  .yana-sidebar-foot span {
+    display: inline !important;
+  }
+  .yana-sidebar-logo img {
+    width: 88px !important;
+  }
+  .yana-sidebar button {
+    min-height: 50px !important;
+    height: 50px !important;
+    padding-inline: 12px !important;
+    gap: 10px !important;
+  }
+  .yana-sidebar button span {
+    font-size: .74rem !important;
+  }
+}
+
+@media (max-width: 980px) and (min-width: 761px) {
+  .yana-app-shell {
+    grid-template-columns: 158px minmax(0, 1fr) !important;
+  }
+  .yana-sidebar-logo img {
+    width: 76px !important;
+  }
+  .yana-sidebar button span {
+    font-size: .70rem !important;
+  }
+}
+

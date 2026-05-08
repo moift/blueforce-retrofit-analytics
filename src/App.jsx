@@ -25,7 +25,6 @@ import {
   Home,
   Info,
   Leaf,
-  Search,
   MousePointerClick,
   RotateCcw,
   SlidersHorizontal,
@@ -91,7 +90,11 @@ const SCENARIOS = {
 };
 
 const VEHICLES = ["F-150", "F-350", "F-450"];
-const HORIZONS = [3, 5, 10];
+const OWNERSHIP_MODES = [
+  { id: "service", label: "Service", donorCostFraction: 0, donorEmissions: false, help: "Retrofit service only. No donor ICE purchase price or manufacturing emissions are added." },
+  { id: "used", label: "Used car", donorCostFraction: 0.5, donorEmissions: true, help: "Adds 50% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
+  { id: "full", label: "100% ICE", donorCostFraction: 1, donorEmissions: true, help: "Adds 100% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
+];
 const DEFAULT_TUNER_INDEX = {
   base: 0,
   km: 0,
@@ -116,17 +119,17 @@ const TUNER_OPTIONS = [
   { value: "carbon", label: "Carbon credits", help: "Drag annual kilometres and show credit revenue only." },
 ];
 const palette = {
-  Retrofit: "#111827",
-  ICE: "#C7CBD1",
-  "OEM EV": "#7D838C",
-  Diesel: "#A8ADB5",
+  Retrofit: "#2563EB",
+  ICE: "#6B7280",
+  "OEM EV": "#10B981",
+  Diesel: "#F59E0B",
 };
 
 const linePalette = {
-  Retrofit: "#111827",
-  ICE: "#C7CBD1",
-  "OEM EV": "#7D838C",
-  Diesel: "#A8ADB5",
+  Retrofit: "#2563EB",
+  ICE: "#6B7280",
+  "OEM EV": "#10B981",
+  Diesel: "#F59E0B",
 };
 
 const scenarioLineColors = ["#111827", "#5E6671", "#9CA3AF", "#C7CBD1", "#E5E7EB"];
@@ -155,15 +158,19 @@ const explanations = {
 
 function currency(value) {
   const number = Number(value || 0);
-  if (Math.abs(number) >= 1_000_000) return `$${(number / 1_000_000).toFixed(2)}M`;
-  return `$${Math.round(number).toLocaleString()}`;
+  const sign = number < 0 ? "-" : "";
+  const absolute = Math.abs(number);
+  if (absolute >= 1_000_000) return `${sign}$${(absolute / 1_000_000).toFixed(2)}M`;
+  return `${sign}$${Math.round(absolute).toLocaleString()}`;
 }
 
 function compactMoney(value) {
   const number = Number(value || 0);
-  if (Math.abs(number) >= 1_000_000) return `$${(number / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(number) >= 1_000) return `$${Math.round(number / 1_000)}k`;
-  return `$${Math.round(number)}`;
+  const sign = number < 0 ? "-" : "";
+  const absolute = Math.abs(number);
+  if (absolute >= 1_000_000) return `${sign}$${(absolute / 1_000_000).toFixed(1)}M`;
+  if (absolute >= 1_000) return `${sign}$${Math.round(absolute / 1_000)}k`;
+  return `${sign}$${Math.round(absolute)}`;
 }
 
 function tonnes(value) {
@@ -216,6 +223,73 @@ function scenarioValuesFor(data, scenario) {
 
 function metricValue(row, key) {
   return Number(row?.[key] ?? 0);
+}
+
+function applyForecastFields(row) {
+  const purchasePrice = Number(row.purchase_price || 0);
+  const annualOperatingCost = Number(row.annual_operating_cost || 0);
+  const annualOperatingEmissions = Number(row.annual_operating_emissions_tonnes ?? row.annual_emissions_tonnes ?? 0);
+  const manufacturingEmissions = Number(row.manufacturing_emissions_tonnes || 0);
+  return {
+    ...row,
+    purchase_price: purchasePrice,
+    annual_operating_cost: annualOperatingCost,
+    annual_operating_emissions_tonnes: annualOperatingEmissions,
+    annual_emissions_tonnes: annualOperatingEmissions,
+    manufacturing_emissions_tonnes: manufacturingEmissions,
+  };
+}
+
+function retrofitOwnershipAdjustment(row, familyRows, ownershipMode) {
+  if (row.type !== "Retrofit") return row;
+  const mode = OWNERSHIP_MODES.find((item) => item.id === ownershipMode) || OWNERSHIP_MODES[0];
+  const donorIce = familyRows.find((candidate) => candidate.type === "ICE") || familyRows.find((candidate) => candidate.type === "Diesel");
+  const donorPurchase = Number(donorIce?.purchase_price || 0) * mode.donorCostFraction;
+  const donorManufacturing = mode.donorEmissions ? Number(donorIce?.manufacturing_emissions_tonnes || 0) : 0;
+  return {
+    ...row,
+    purchase_price: Number(row.purchase_price || 0) + donorPurchase,
+    base_retrofit_purchase_price: Number(row.purchase_price || 0),
+    donor_ice_purchase_price_added: donorPurchase,
+    donor_ice_manufacturing_emissions_added_tonnes: donorManufacturing,
+    manufacturing_emissions_tonnes: Number(row.manufacturing_emissions_tonnes || 0) + donorManufacturing,
+    ownership_mode: mode.id,
+  };
+}
+
+function costAt(row, year) {
+  const horizonYear = Math.max(0, Number(year || 0));
+  return Number(row?.purchase_price || 0) + Number(row?.annual_operating_cost || 0) * horizonYear;
+}
+
+function operatingEmissionsAt(row, year) {
+  const horizonYear = Math.max(0, Number(year || 0));
+  return Number(row?.annual_operating_emissions_tonnes ?? row?.annual_emissions_tonnes ?? 0) * horizonYear;
+}
+
+function lifecycleEmissionsAt(row, year) {
+  return Number(row?.manufacturing_emissions_tonnes || 0) + operatingEmissionsAt(row, year);
+}
+
+function scenarioOwnershipCostAdjustment(row, scenario, parameterValue) {
+  if (row?.type !== "Retrofit" || scenario === "carbon") return 0;
+  const donorCost = Number(row.donor_ice_purchase_price_added || 0);
+  if (!donorCost) return 0;
+  if (scenario === "fleet") return donorCost * Number(parameterValue || 0);
+  return donorCost;
+}
+
+function firstYearWhere(leftRow, rightRow, valueGetter) {
+  if (!leftRow || !rightRow) return null;
+  for (let year = 0; year <= 10; year += 1) {
+    if (valueGetter(leftRow, year) <= valueGetter(rightRow, year)) return year;
+  }
+  return null;
+}
+
+function formatBreakevenYear(year) {
+  if (year == null) return ">10 years";
+  return `Year ${year}`;
 }
 
 function useScenarioData() {
@@ -766,8 +840,10 @@ function buildTruckModel(type, family) {
   const isElectric = type === "Retrofit" || type === "OEM EV";
   const isRetrofit = type === "Retrofit";
   const accent = new THREE.Color(palette[type] || "#111827");
-  const body = new THREE.MeshStandardMaterial({ color: 0xf2f5f6, roughness: 0.42, metalness: 0.18 });
-  const darker = new THREE.MeshStandardMaterial({ color: 0xc8d0d4, roughness: 0.48, metalness: 0.12 });
+  const bodyColor = type === "Retrofit" ? 0xdbeafe : type === "OEM EV" ? 0xd1fae5 : type === "Diesel" ? 0xfef3c7 : 0xe5e7eb;
+  const darkerColor = type === "Retrofit" ? 0x93c5fd : type === "OEM EV" ? 0x86efac : type === "Diesel" ? 0xfbbf24 : 0xb7bec8;
+  const body = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.42, metalness: 0.18 });
+  const darker = new THREE.MeshStandardMaterial({ color: darkerColor, roughness: 0.48, metalness: 0.12 });
   const glass = new THREE.MeshPhysicalMaterial({ color: 0xaed7e6, roughness: 0.08, metalness: 0.04, transmission: 0.12, transparent: true, opacity: 0.78 });
   const tire = new THREE.MeshStandardMaterial({ color: 0x15191d, roughness: 0.72 });
   const rim = new THREE.MeshStandardMaterial({ color: 0xe7ebed, roughness: 0.26, metalness: 0.62 });
@@ -953,11 +1029,11 @@ function App() {
   const [vehicle, setVehicle] = useState("F-150");
   const [scenario, setScenario] = useState("base");
   const [horizon, setHorizon] = useState(10);
+  const [ownershipMode, setOwnershipMode] = useState("service");
   const [selectedType, setSelectedType] = useState("Retrofit");
   const [focusMode, setFocusMode] = useState("cost");
   const [detailOpen, setDetailOpen] = useState(null);
   const [tunerIndexByScenario, setTunerIndexByScenario] = useState(DEFAULT_TUNER_INDEX);
-  const [useIncentiveSensitivity, setUseIncentiveSensitivity] = useState(false);
   const [scenarioTab, setScenarioTab] = useState("km");
   const [simulatorInputs, setSimulatorInputs] = useState({
     fleetSize: 1,
@@ -979,13 +1055,16 @@ function App() {
     [],
   );
 
-  const rows = useMemo(() => {
+  const inputRows = data?.Breakeven_Input_Check || [];
+  const baseRows = useMemo(() => {
     if (!data) return [];
-    return data.BaseCase_Summary.filter((row) => row.model.startsWith(vehicle)).map((row) => ({
+    return data.BaseCase_Summary.filter((row) => row.model.startsWith(vehicle)).map((row) => applyForecastFields({
       ...row,
       type: vehicleType(row.model),
     }));
   }, [data, vehicle]);
+
+  const rows = useMemo(() => baseRows.map((row) => retrofitOwnershipAdjustment(row, baseRows, ownershipMode)), [baseRows, ownershipMode]);
 
   useEffect(() => {
     if (rows.length && !rows.some((row) => row.type === selectedType)) {
@@ -1006,25 +1085,16 @@ function App() {
   const creditProgramReview = data?.Credit_Program_Review || [];
 
   const retrofit = rows.find((row) => row.type === "Retrofit");
+  const iceRow = rows.find((row) => row.type === "ICE");
   const selectedRow = rows.find((row) => row.type === selectedType) || retrofit;
+  const activeOwnership = OWNERSHIP_MODES.find((item) => item.id === ownershipMode) || OWNERSHIP_MODES[0];
+  const emissionsAvoidedVsIce = iceRow && retrofit ? lifecycleEmissionsAt(iceRow, horizon) - lifecycleEmissionsAt(retrofit, horizon) : 0;
   const selectedCarbonCreditRow = carbonCreditRates.find((row) => row.model === selectedRow?.model);
   const retrofitCarbonCreditRow = carbonCreditRates.find((row) => row.model === retrofit?.model);
   const carbonCreditMethodNote = creditProgramReview.find((row) => row.program === "BC Low Carbon Fuel Standard (LCFS)")?.model_action;
   const iceComparison = comparisons.find((row) => row.comparison.includes("ICE"));
   const otherComparison = comparisons.find((row) => !row.comparison.includes("ICE"));
-  const selectedComparison = selectedType === "ICE"
-    ? iceComparison
-    : selectedType === "Retrofit"
-      ? iceComparison
-      : comparisons.find((row) => row.comparison.includes(selectedType));
   const otherType = otherComparison?.comparison?.replace("Retrofit vs ", "") || "comparison vehicle";
-  const horizonCostKey = `total_cost_year_${horizon}`;
-  const horizonSavingsKey = `savings_year_${horizon}`;
-  const horizonEmissionsKey = `emissions_avoided_year_${horizon}`;
-  const horizonLifecycleAvoidedKey = `lifecycle_emissions_avoided_year_${horizon}`;
-  const horizonOperatingEmissionsKey = `cumulative_operating_emissions_year_${horizon}`;
-  const horizonLifecycleEmissionsKey = `lifecycle_emissions_year_${horizon}`;
-  const horizonCumulativeEmissionsKey = horizonLifecycleEmissionsKey;
   const scenarioValueOptions = useMemo(() => scenarioValuesFor(data, scenario), [data, scenario]);
   const scenarioValueIndex = Math.min(
     tunerIndexByScenario[scenario] ?? 0,
@@ -1038,7 +1108,7 @@ function App() {
 
   const tunedRows = useMemo(() => {
     if (!data || scenario === "base" || scenarioParamValue == null) {
-      return rows.map((row) => ({ ...row, tunedCost: Number(row[horizonCostKey]), tunedSource: "BaseCase_Summary" }));
+      return rows.map((row) => ({ ...row, tunedCost: costAt(row, horizon), tunedSource: "BaseCase_Summary" }));
     }
 
     const config = SCENARIOS[scenario];
@@ -1067,14 +1137,15 @@ function App() {
           return null;
         }
 
+        const matchedCost = match ? Number(match[config.metric]) : costAt(row, horizon);
         return {
           ...row,
-          tunedCost: match ? Number(match[config.metric]) : Number(row[horizonCostKey]),
+          tunedCost: matchedCost + (match ? scenarioOwnershipCostAdjustment(row, scenario, scenarioParamValue) : 0),
           tunedSource: config.sheet,
         };
       })
       .filter(Boolean);
-  }, [data, rows, scenario, scenarioParamValue, horizon, horizonCostKey]);
+  }, [data, rows, scenario, scenarioParamValue, horizon]);
 
   const selectedTunedRow = tunedRows.find((row) => row.type === selectedType) || tunedRows.find((row) => row.type === "Retrofit") || selectedRow;
   const retrofitTunedRow = tunedRows.find((row) => row.type === "Retrofit") || retrofit;
@@ -1087,7 +1158,7 @@ function App() {
   }, null);
   const activeSavingsVsIce = isCarbonScenario
     ? Number(retrofitTunedRow?.tunedCost || 0)
-    : Math.max(0, Number(iceTunedRow?.tunedCost ?? iceComparison?.[horizonCostKey] ?? 0) - Number(retrofitTunedRow?.tunedCost ?? retrofit?.[horizonCostKey] ?? 0));
+    : Number(iceTunedRow?.tunedCost ?? 0) - Number(retrofitTunedRow?.tunedCost ?? 0);
   const retrofitWins = isCarbonScenario ? true : best?.type === "Retrofit";
 
   const costChart = useMemo(
@@ -1096,9 +1167,9 @@ function App() {
         type: isCarbonScenario ? row.model : row.type,
         pathwayType: row.type,
         selected: Math.round(row.tunedCost),
-        "3 years": Math.round(row.total_cost_year_3),
-        "5 years": Math.round(row.total_cost_year_5),
-        "10 years": Math.round(row.total_cost_year_10),
+        "3 years": Math.round(costAt(row, 3)),
+        "5 years": Math.round(costAt(row, 5)),
+        "10 years": Math.round(costAt(row, 10)),
       })),
     [tunedRows, isCarbonScenario],
   );
@@ -1113,10 +1184,10 @@ function App() {
       rows.map((row) => ({
         type: row.type,
         manufacturing: Number(metricValue(row, "manufacturing_emissions_tonnes").toFixed(2)),
-        operating: Number(metricValue(row, horizonOperatingEmissionsKey).toFixed(2)),
-        lifecycle: Number(metricValue(row, horizonLifecycleEmissionsKey).toFixed(2)),
+        operating: Number(operatingEmissionsAt(row, horizon).toFixed(2)),
+        lifecycle: Number(lifecycleEmissionsAt(row, horizon).toFixed(2)),
       })),
-    [rows, horizonOperatingEmissionsKey, horizonLifecycleEmissionsKey],
+    [rows, horizon],
   );
 
   const scenarioChart = useMemo(() => {
@@ -1128,10 +1199,10 @@ function App() {
       const keys = rows.map((row) => row.type);
       const colors = Object.fromEntries(keys.map((key) => [key, linePalette[key] || scenarioLineColors[0]]));
       return {
-        data: [0, 3, 5, 10].map((year) => {
+        data: Array.from({ length: 11 }, (_, year) => {
           const item = { label: `${year}Y` };
           rows.forEach((row) => {
-            item[row.type] = year === 0 ? Number(row.purchase_price || 0) : Number(row[`total_cost_year_${year}`]);
+            item[row.type] = costAt(row, year);
           });
           return item;
         }),
@@ -1159,7 +1230,9 @@ function App() {
           if (parameterValue === 0 && scenarioHasZeroBaseline(scenario)) {
             item[keys[parameterIndex]] = scenarioZeroBaselineValue(scenario, selectedRow);
           } else {
-            item[keys[parameterIndex]] = match ? Number(match[config.metric]) : null;
+            item[keys[parameterIndex]] = match
+              ? Number(match[config.metric]) + scenarioOwnershipCostAdjustment(selectedRow, scenario, parameterValue)
+              : null;
           }
         });
         return item;
@@ -1179,13 +1252,12 @@ function App() {
       ];
     }
 
-    const lifecycleAvoided = iceComparison?.[horizonLifecycleAvoidedKey] || 0;
     return [
       `Savings vs ICE: ${currency(activeSavingsVsIce)} over ${horizon}Y.`,
-      `Lifecycle CO2e avoided: ${tonnes(lifecycleAvoided)}.`,
+      `Lifecycle CO2e avoided: ${tonnes(emissionsAvoidedVsIce)}.`,
       scenario === "base" ? "Base case ready for client discussion." : `${SCENARIOS[scenario].fullLabel}: ${activeScenarioLabel}.`,
     ];
-  }, [isCarbonScenario, vehicle, horizon, scenario, retrofitTunedRow, iceComparison, horizonLifecycleAvoidedKey, activeSavingsVsIce, activeScenarioLabel]);
+  }, [isCarbonScenario, vehicle, horizon, scenario, retrofitTunedRow, emissionsAvoidedVsIce, activeSavingsVsIce, activeScenarioLabel]);
 
   if (!data || !retrofit || !selectedRow) {
     return (
@@ -1198,13 +1270,9 @@ function App() {
   const selectedSavings = selectedType === "Retrofit"
     ? activeSavingsVsIce
     : Number(selectedTunedRow?.tunedCost ?? 0) - Number(retrofitTunedRow?.tunedCost ?? 0);
-  const selectedEmissionsGap = selectedType === "Retrofit"
-    ? iceComparison?.[horizonLifecycleAvoidedKey]
-    : metricValue(selectedRow, horizonLifecycleEmissionsKey) - metricValue(retrofit, horizonLifecycleEmissionsKey);
   const advantageScore = Math.max(6, Math.min(98, Math.round((Number(retrofitTunedRow?.tunedCost ?? 0) / Math.max(Number(selectedTunedRow?.tunedCost ?? 0), Number(retrofitTunedRow?.tunedCost ?? 0), 1)) * 100)));
-  const storyCost = selectedTunedRow?.tunedCost ?? selectedRow[horizonCostKey];
+  const storyCost = selectedTunedRow?.tunedCost ?? costAt(selectedRow, horizon);
   const storySavings = activeSavingsVsIce;
-  const storyEmissions = iceComparison?.[horizonLifecycleAvoidedKey] || 0;
   const storySentence = isCarbonScenario
     ? `${vehicle} retrofit credit value: ${currency(retrofitTunedRow?.tunedCost ?? 0)} over ${horizon}Y.`
     : retrofitWins
@@ -1224,7 +1292,6 @@ function App() {
         { label: "4. Outcome", title: retrofitWins ? "Retrofit leads" : `${best?.type} leads`, detail: retrofitWins ? `${currency(storySavings)} saved vs ICE.` : "Review sponsor assumptions before recommendation." },
       ];
 
-  const iceRow = rows.find((row) => row.type === "ICE");
   const breakevenVsIce = (data?.Breakeven_10yr_Summary || []).find(
     (row) => row.retrofit_model === `${vehicle} Retrofit` && row.comparison_model === `${vehicle} ICE`,
   );
@@ -1232,15 +1299,15 @@ function App() {
   const storyCarbonValue = (data?.Carbon_Credit_Revenue || []).find(
     (row) => row.model === `${vehicle} Retrofit` && Number(row.year) === horizon && Number(row.km_per_year) === storyCarbonKm,
   )?.cumulative_credit_value_cad || 0;
-  const breakevenYear = breakevenVsIce?.cost_breakeven_year_after_confirmed_incentive ?? "Review required";
-  const breakevenText = typeof breakevenYear === "number"
-    ? `Year ${breakevenYear}`
-    : String(breakevenYear);
+  const dynamicCostBreakevenYear = firstYearWhere(retrofit, iceRow, costAt);
+  const dynamicEmissionsBreakevenYear = firstYearWhere(retrofit, iceRow, lifecycleEmissionsAt);
+  const breakevenText = formatBreakevenYear(dynamicCostBreakevenYear);
+  const emissionsBreakevenText = formatBreakevenYear(dynamicEmissionsBreakevenYear);
   const narrativeSteps = [
     {
       eyebrow: "01 / Current option",
       title: "Current ICE baseline",
-      value: currency(iceTunedRow?.tunedCost ?? iceRow?.[horizonCostKey] ?? 0),
+      value: currency(iceTunedRow?.tunedCost ?? costAt(iceRow, horizon) ?? 0),
       copy: `ICE benchmark, ${horizon}Y.`,
       action: () => setDetailOpen("cost"),
     },
@@ -1254,7 +1321,7 @@ function App() {
     {
       eyebrow: "03 / Climate result",
       title: "Lifecycle emissions difference",
-      value: tonnes(iceComparison?.[horizonLifecycleAvoidedKey] || 0),
+      value: tonnes(emissionsAvoidedVsIce),
       copy: "Manufacturing + operating CO2e.",
       action: () => setDetailOpen("emissions"),
     },
@@ -1276,13 +1343,13 @@ function App() {
 
   const lowestLifecycle = rows.reduce((winner, row) => {
     if (!winner) return row;
-    return Number(row[horizonLifecycleEmissionsKey] || Infinity) < Number(winner[horizonLifecycleEmissionsKey] || Infinity) ? row : winner;
+    return (lifecycleEmissionsAt(row, horizon) || Infinity) < (lifecycleEmissionsAt(winner, horizon) || Infinity) ? row : winner;
   }, null);
   const executiveMetrics = [
     { label: "Best financial path", value: isCarbonScenario ? best?.type || "Eligible EV" : best?.type || "Pending", detail: isCarbonScenario ? "Credit view" : `${horizon}Y lifecycle cost` },
     { label: "Savings vs ICE", value: isCarbonScenario ? currency(retrofitTunedRow?.tunedCost ?? 0) : currency(activeSavingsVsIce), detail: isCarbonScenario ? "Credit revenue" : `${vehicle} retrofit` },
     { label: "Breakeven", value: breakevenText, detail: "Adjusted model" },
-    { label: "Lowest CO2e", value: lowestLifecycle?.type || "Pending", detail: tonnes(lowestLifecycle?.[horizonLifecycleEmissionsKey] || 0) },
+    { label: "Lowest CO2e", value: lowestLifecycle?.type || "Pending", detail: tonnes(lowestLifecycle ? lifecycleEmissionsAt(lowestLifecycle, horizon) : 0) },
     { label: "Funding signal", value: currency(storyCarbonValue), detail: "BC LCFS estimate" },
   ];
 
@@ -1323,23 +1390,25 @@ function App() {
     } : {
       title: "What the savings number means",
       body: "Savings are not a separate assumption. They are the cost difference between the matching ICE pathway and the retrofit pathway for the same truck, time horizon, and scenario case.",
-      takeaway: `${vehicle} retrofit shows ${currency(activeSavingsVsIce)} in ${horizon}-year savings versus ICE in the current view.`,
+      takeaway: activeSavingsVsIce >= 0
+        ? `${vehicle} retrofit shows ${currency(activeSavingsVsIce)} in ${horizon}-year savings versus ICE in the current view.`
+        : `${vehicle} retrofit is ${currency(Math.abs(activeSavingsVsIce))} higher than ICE in the current view.`,
       facts: [
         { label: "Retrofit cost", value: currency(retrofitTunedRow?.tunedCost) },
         { label: "ICE cost", value: currency(iceTunedRow?.tunedCost) },
-        { label: "Savings vs ICE", value: currency(activeSavingsVsIce) },
+        { label: activeSavingsVsIce >= 0 ? "Savings vs ICE" : "Extra cost vs ICE", value: currency(Math.abs(activeSavingsVsIce)) },
         { label: "Time horizon", value: `${horizon} years` },
       ],
     },
     emissions: {
       title: "How lifecycle emissions work",
       body: "Lifecycle emissions begin before the first kilometre is driven. The model starts with manufacturing emissions, then adds operating emissions from fuel, diesel, or electricity through the selected horizon.",
-      takeaway: `${tonnes(iceComparison?.[horizonLifecycleAvoidedKey] || 0)} lifecycle CO2e is avoided versus ICE in this view.`,
+      takeaway: `${tonnes(emissionsAvoidedVsIce)} lifecycle CO2e is avoided versus ICE in this view.`,
       facts: [
         { label: "Manufacturing", value: tonnes(selectedRow.manufacturing_emissions_tonnes) },
-        { label: "Operating", value: tonnes(selectedRow[horizonOperatingEmissionsKey]) },
-        { label: "Lifecycle", value: tonnes(selectedRow[horizonLifecycleEmissionsKey]) },
-        { label: "Avoided vs ICE", value: tonnes(iceComparison?.[horizonLifecycleAvoidedKey] || 0) },
+        { label: "Operating", value: tonnes(operatingEmissionsAt(selectedRow, horizon)) },
+        { label: "Lifecycle", value: tonnes(lifecycleEmissionsAt(selectedRow, horizon)) },
+        { label: "Avoided vs ICE", value: tonnes(emissionsAvoidedVsIce) },
       ],
     },
     scenario: {
@@ -1362,21 +1431,10 @@ function App() {
       facts: [
         { label: "Fixed credit price", value: "$258.74/credit" },
         { label: "Credit value", value: `${Number(retrofitCarbonCreditRow?.credit_value_cents_per_kwh_base_price || 0).toFixed(1)} cents/kWh` },
-        { label: "Base annual value", value: currency(retrofitCarbonCreditRow?.annual_credit_value_cad_base_price || 0) },
-        { label: "Scenario km cases", value: "15k / 20k / 30k km/year" },
+        { label: "Current km case", value: `${storyCarbonKm.toLocaleString()} km/year` },
+        { label: "Scope", value: "Credit revenue only" },
       ],
-    },
-    assumptions: {
-      title: "What is ready, and what still needs sponsor validation",
-      body: "A good client dashboard should not pretend every estimate is equally certain. This layer separates the numbers already in the dataset from the items the team should confirm before final recommendations.",
-      takeaway: "Use confirmed values for the demo story, and label pending items clearly in the report.",
-      facts: [
-        { label: "Confirmed", value: "Prices, operating totals, lifecycle model outputs" },
-        { label: "Updated", value: "Manufacturing emissions included" },
-        { label: "Pending", value: "F-350 retrofit price, maintenance split, battery details, LCFS credit ownership" },
-        { label: "Client stance", value: "Transparent assumptions" },
-      ],
-    },
+    }
   };
 
   const primaryMetricHelp = isCarbonScenario
@@ -1400,17 +1458,16 @@ function App() {
   };
 
   const annualKm = Number(breakevenVsIce?.annual_km || 20000);
-  const inputRows = data?.Breakeven_Input_Check || [];
   const inputForModel = (model) => inputRows.find((row) => row.model === model) || {};
   const annualMaintenanceFor = (row) => Number(inputForModel(row.model).maintenance_per_km || 0) * annualKm;
   const lowestMaintenanceRow = rows.reduce((winner, row) => {
     if (!winner) return row;
     return annualMaintenanceFor(row) < annualMaintenanceFor(winner) ? row : winner;
   }, null);
-  const costTimelineData = [0, 3, 5, 10].map((year) => {
+  const costTimelineData = Array.from({ length: 11 }, (_, year) => {
     const item = { year: `${year}Y` };
     rows.forEach((row) => {
-      item[row.type] = year === 0 ? Number(row.purchase_price || 0) : Number(row[`total_cost_year_${year}`] || 0);
+      item[row.type] = costAt(row, year);
     });
     return item;
   });
@@ -1423,29 +1480,7 @@ function App() {
         ? "New EV replacement"
         : "Status quo benchmark",
   }));
-  const incentiveBreakevenYear = useIncentiveSensitivity
-    ? breakevenVsIce?.cost_breakeven_year_after_unconfirmed_5k_sensitivity
-    : breakevenVsIce?.cost_breakeven_year_after_confirmed_incentive;
-  const incentiveNetSavings = useIncentiveSensitivity
-    ? breakevenVsIce?.net_savings_after_unconfirmed_5k_sensitivity
-    : breakevenVsIce?.net_savings_after_confirmed_incentive;
-  const breakevenDisplay = typeof incentiveBreakevenYear === "number" ? `Year ${incentiveBreakevenYear}` : String(incentiveBreakevenYear || "Review");
-  const breakevenCostData = (data?.Breakeven_Fleet_Total_Cost || [])
-    .filter((row) => Number(row.fleet_size) === 1 && Number(row.km_per_year) === annualKm && Number(row.year) <= 10)
-    .filter((row) => row.model === `${vehicle} Retrofit` || row.model === `${vehicle} ICE` || row.model.includes(vehicle))
-    .reduce((items, row) => {
-      let item = items.find((candidate) => candidate.year === `${row.year}Y`);
-      if (!item) {
-        item = { year: `${row.year}Y` };
-        items.push(item);
-      }
-      const key = row.model.includes("Retrofit") ? "Retrofit" : row.model.includes("Lightning") ? "OEM EV" : row.model.includes("Diesel") ? "Diesel" : "ICE";
-      item[key] = useIncentiveSensitivity
-        ? Number(row.cumulative_total_cost_fleet_after_unconfirmed_5k_sensitivity || 0)
-        : Number(row.cumulative_total_cost_fleet_after_confirmed_incentive || 0);
-      return items;
-    }, [])
-    .sort((a, b) => Number(a.year.replace("Y", "")) - Number(b.year.replace("Y", "")));
+  const breakevenDisplay = breakevenText;
   const scenarioTabs = [
     { id: "km", label: "Annual km sensitivity", insight: "Driving more kilometres generally strengthens the electric retrofit operating case." },
     { id: "fleet", label: "Fleet size sensitivity", insight: "Fleet scale turns per-vehicle savings into a larger procurement case." },
@@ -1471,6 +1506,29 @@ function App() {
           };
         });
       })();
+  const scenarioContext = {
+    km: {
+      axis: "X-axis: annual kilometres case. Y-axis: cumulative total cost at the selected year.",
+      method: `Base case uses 20,000 km/year. A higher km case increases fuel, electricity, maintenance, and operating emissions while purchase price stays constant.`,
+    },
+    fleet: {
+      axis: "X-axis: number of vehicles. Y-axis: total fleet cost at the selected year.",
+      method: "Each vehicle keeps the same per-vehicle assumptions; the result scales by fleet size.",
+    },
+    fuel: {
+      axis: "X-axis: fuel/electricity multiplier. Y-axis: cumulative total cost at the selected year.",
+      method: "1.0x means the base fuel/electricity price from the dataset. 1.2x means 20% higher fuel/electricity cost while other inputs stay constant.",
+    },
+    maintenance: {
+      axis: "X-axis: maintenance inflation case. Y-axis: cumulative total cost at the selected year.",
+      method: `The chart uses ${annualKm.toLocaleString()} km/year and the selected ${horizon}-year horizon. A 5% bar means maintenance costs are inflated by 5% in the exported scenario case.`,
+    },
+    emissions: {
+      axis: "X-axis: pathway. Y-axis: lifecycle emissions in tonnes CO2e.",
+      method: "Each bar starts with manufacturing emissions, then stacks operating emissions through the selected year.",
+    },
+  };
+
   const updateSimulatorInput = (key, value) => {
     const next = Number(value);
     setSimulatorInputs((current) => ({ ...current, [key]: next }));
@@ -1493,7 +1551,7 @@ function App() {
   const simulatedBest = simulatedRows.reduce((winner, row) => !winner || row.lifecycleCost < winner.lifecycleCost ? row : winner, null);
   const simulatedRetrofit = simulatedRows.find((row) => row.type === "Retrofit") || simulatedRows[0];
   const simulatedIce = simulatedRows.find((row) => row.type === "ICE") || simulatedRows.find((row) => row.type === "Diesel");
-  const simulatedSavings = Math.max(0, Number(simulatedIce?.lifecycleCost || 0) - Number(simulatedRetrofit?.lifecycleCost || 0));
+  const simulatedSavings = Number(simulatedIce?.lifecycleCost || 0) - Number(simulatedRetrofit?.lifecycleCost || 0);
   const simulatedTimeline = Array.from({ length: Math.floor(simulatorInputs.horizon) + 1 }, (_, year) => {
     const item = { year: `${year}Y` };
     simulatedRows.forEach((row) => {
@@ -1508,29 +1566,24 @@ function App() {
   const PageHeader = ({ title, kicker }) => (
     <div className="yana-page-head">
       <div>
-        <p className="yana-kicker">{kicker}</p>
+        {kicker && <p className="yana-kicker">{kicker}</p>}
         <h2>{title}</h2>
-      </div>
-      <div className="yana-head-actions">
-        <button type="button" onClick={() => setVehicle("F-150")} className={vehicle === "F-150" ? "active" : ""}>F-150</button>
-        <button type="button" onClick={() => setVehicle("F-350")} className={vehicle === "F-350" ? "active" : ""}>F-350</button>
-        <button type="button" onClick={() => setVehicle("F-450")} className={vehicle === "F-450" ? "active" : ""}>F-450</button>
       </div>
     </div>
   );
 
   const renderOverview = () => (
     <>
-      <PageHeader title="Executive overview" kicker="One decision: which pathway wins?" />
+      <PageHeader title="Executive overview" />
       <section className="yana-kpi-grid">
-        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("comparison")}><span>Best 10-Year Option</span><strong>{best?.type || "Pending"}</strong><small>{currency(best?.tunedCost)} total cost</small></button>
-        <button className="yana-kpi-card" type="button" onClick={() => setDetailOpen("savings")}><span>10-Year Savings</span><strong>{currency(activeSavingsVsIce)}</strong><small>Retrofit vs ICE</small></button>
-        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("carbon")}><span>Emissions Reduced</span><strong>{tonnes(iceComparison?.lifecycle_emissions_avoided_year_10 || 0)}</strong><small>Lifecycle CO2e</small></button>
+        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("comparison")}><span>Best {horizon}-Year Option</span><strong>{best?.type || "Pending"}</strong><small>{currency(best?.tunedCost)} total cost</small></button>
+        <button className="yana-kpi-card" type="button" onClick={() => setDetailOpen("savings")}><span>{horizon}-Year Difference</span><strong>{currency(activeSavingsVsIce)}</strong><small>Retrofit vs ICE</small></button>
+        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("carbon")}><span>Emissions Reduced</span><strong>{tonnes(emissionsAvoidedVsIce)}</strong><small>Lifecycle CO2e</small></button>
         <button className="yana-kpi-card" type="button" onClick={() => setActiveView("breakeven")}><span>Breakeven Year</span><strong>{breakevenText}</strong><small>$0 confirmed incentive</small></button>
       </section>
       <section className="yana-main-grid">
         <article className="yana-card yana-chart-card">
-          <div className="yana-card-head"><div><span>10-Year Lifecycle Cost Comparison</span><h3>{vehicle} pathways</h3></div></div>
+          <div className="yana-card-head"><div><span>Lifecycle Cost Comparison</span><h3>{vehicle} pathways, year 0 to 10</h3></div><p>Hover the curve to inspect cost at each year.</p></div>
           <ResponsiveContainer width="100%" height={330}>
             <LineChart data={costTimelineData} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="#E5E7EB" />
@@ -1538,15 +1591,15 @@ function App() {
               <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
               <Tooltip content={<GlassTooltip formatter={currency} />} />
               <Legend />
-              {rows.map((row) => <Line key={row.type} type="monotone" dataKey={row.type} stroke={linePalette[row.type] || "#9CA3AF"} strokeWidth={3} dot={{ r: 4 }} connectNulls />)}
+              {rows.map((row) => <Line key={row.type} type="monotone" dataKey={row.type} stroke={linePalette[row.type] || "#9CA3AF"} strokeWidth={3} dot={{ r: 4 }} connectNulls isAnimationActive={false} />)}
             </LineChart>
           </ResponsiveContainer>
         </article>
         <aside className="yana-card yana-recommendation">
           <span>Recommended Pathway</span>
           <h3>{retrofitWins ? "BlueForce Retrofit" : best?.type || "Review"}</h3>
-          <p>{retrofitWins ? `Lowest 10-year cost for ${vehicle}, with ${currency(activeSavingsVsIce)} savings versus ICE.` : `Current assumptions favor ${best?.type}. Validate inputs before recommendation.`}</p>
-          <p>{tonnes(iceComparison?.lifecycle_emissions_avoided_year_10 || 0)} lifecycle CO2e avoided versus ICE.</p>
+          <p>{retrofitWins ? `Lowest ${horizon}-year cost for ${vehicle}, with ${currency(activeSavingsVsIce)} savings versus ICE.` : `Current assumptions favor ${best?.type}. Retrofit is ${currency(Math.abs(activeSavingsVsIce))} ${activeSavingsVsIce < 0 ? "higher" : "lower"} than ICE.`}</p>
+          <p>{tonnes(emissionsAvoidedVsIce)} lifecycle CO2e avoided versus ICE.</p>
           <button type="button" onClick={() => setActiveView("methodology")}>View assumptions</button>
         </aside>
       </section>
@@ -1558,11 +1611,6 @@ function App() {
       <PageHeader title="Fleet simulator" kicker="Live controls. Drag and watch the chart move." />
       <section className="yana-simulator-grid live-simulator-grid">
         <article className="yana-card yana-input-panel live-input-panel">
-          <div className="live-vehicle-row" role="radiogroup" aria-label="Vehicle class">
-            {VEHICLES.map((item) => (
-              <button key={item} type="button" className={vehicle === item ? "active" : ""} onClick={() => setVehicle(item)}>{item}</button>
-            ))}
-          </div>
           <ControlSlider label="Fleet size" value={simulatorInputs.fleetSize} min={0} max={50} step={1} format={(value) => `${Math.round(value)} vehicles`} onChange={(value) => updateSimulatorInput("fleetSize", value)} />
           <ControlSlider label="Annual km" value={simulatorInputs.annualKm} min={0} max={50000} step={250} format={(value) => `${Math.round(value).toLocaleString()} km`} onChange={(value) => updateSimulatorInput("annualKm", value)} />
           <ControlSlider label="Fuel price" value={simulatorInputs.fuelMultiplier} min={0.5} max={2} step={0.01} format={(value) => `${Number(value).toFixed(2)}x`} onChange={(value) => updateSimulatorInput("fuelMultiplier", value)} />
@@ -1576,7 +1624,7 @@ function App() {
             <b>{currency(simulatedRetrofit?.lifecycleCost || 0)}</b>
           </div>
           <div className="live-summary-row">
-            <span><b>{currency(simulatedSavings)}</b> savings vs ICE</span>
+            <span><b>{currency(simulatedSavings)}</b> difference vs ICE</span>
             <span><b>{annual(simulatedRetrofit?.annualMaintenance || 0)}</b> maintenance</span>
             <span><b>{tonnes(simulatedRetrofit?.lifecycleEmissions || 0)}</b> lifecycle CO2e</span>
           </div>
@@ -1627,10 +1675,10 @@ function App() {
               <div><dt>Purchase price</dt><dd>{currency(row.purchase_price)}</dd></div>
               <div><dt>Annual maintenance</dt><dd>{annual(row.annualMaintenance)}</dd></div>
               <div><dt>Annual operating</dt><dd>{annual(row.annual_operating_cost)}</dd></div>
-              <div><dt>10-year lifecycle cost</dt><dd>{currency(row.total_cost_year_10)}</dd></div>
-              <div><dt>Lifecycle emissions</dt><dd>{tonnes(row.lifecycle_emissions_year_10)}</dd></div>
+              <div><dt>{horizon}-year lifecycle cost</dt><dd>{currency(costAt(row, horizon))}</dd></div>
+              <div><dt>Lifecycle emissions</dt><dd>{tonnes(lifecycleEmissionsAt(row, horizon))}</dd></div>
             </dl>
-            <p>{row.bestUse}</p>
+            <p>{row.type === "Retrofit" ? `${row.bestUse}. ${activeOwnership.help}` : row.bestUse}</p>
           </article>
         ))}
       </section>
@@ -1639,8 +1687,12 @@ function App() {
 
   const renderScenario = () => (
     <>
-      <PageHeader title="Scenario analysis" kicker="One sensitivity at a time." />
+      <PageHeader title="Scenario analysis" kicker="One driver changes at a time." />
       <section className="yana-tabs">{scenarioTabs.map((tab) => <button key={tab.id} type="button" className={activeScenarioTab === tab.id ? "active" : ""} onClick={() => { setScenarioTab(tab.id); if (tab.id !== "emissions") setScenario(tab.id); }}>{tab.label}</button>)}</section>
+      <section className="scenario-explain-grid">
+        <article className="yana-card scenario-note"><span>How to read this</span><p>{scenarioContext[activeScenarioTab]?.axis}</p></article>
+        <article className="yana-card scenario-note"><span>Assumption</span><p>{scenarioContext[activeScenarioTab]?.method}</p></article>
+      </section>
       <section className="yana-card yana-chart-card">
         <div className="yana-card-head"><div><span>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.label}</span><h3>{selectedRow.type} sensitivity</h3></div><p>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.insight}</p></div>
         <ResponsiveContainer width="100%" height={380}>
@@ -1648,19 +1700,19 @@ function App() {
             <BarChart data={scenarioTabChart} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="type" tickLine={false} axisLine={false} stroke="#6B7280" />
-              <YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" />
-              <Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} />} />
+              <YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
+              <Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} note={scenarioContext.emissions.method} />} />
               <Legend />
-              <Bar dataKey="manufacturing" stackId="a" fill="#9CA3AF" />
-              <Bar dataKey="operating" stackId="a" fill="#3B82F6" />
+              <Bar dataKey="manufacturing" name="Manufacturing" stackId="a" fill="#9CA3AF" />
+              <Bar dataKey="operating" name="Operating" stackId="a" fill="#2563EB" />
             </BarChart>
           ) : (
             <BarChart data={scenarioTabChart} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="#6B7280" />
               <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
-              <Tooltip content={<GlassTooltip formatter={currency} />} />
-              <Bar dataKey="value" fill="#3B82F6" radius={[8, 8, 0, 0]} />
+              <Tooltip content={<GlassTooltip formatter={currency} note={scenarioContext[activeScenarioTab]?.method} />} />
+              <Bar dataKey="value" name={`${horizon}-year cost`} fill={linePalette[selectedRow.type] || "#2563EB"} radius={[8, 8, 0, 0]} />
             </BarChart>
           )}
         </ResponsiveContainer>
@@ -1670,19 +1722,29 @@ function App() {
 
   const renderBreakeven = () => (
     <>
-      <PageHeader title="Breakeven" kicker="Default confirmed incentive is $0." />
+      <PageHeader title="Breakeven" kicker="When cumulative retrofit cost catches or beats the comparison pathway." />
       <section className="yana-breakeven-grid">
-        <article className="yana-card yana-breakeven-summary"><span>Breakeven year</span><strong>{breakevenDisplay}</strong><small>{useIncentiveSensitivity ? "What-if $5,000 sensitivity" : "$0 confirmed incentive"}</small><button type="button" className={useIncentiveSensitivity ? "active" : ""} onClick={() => setUseIncentiveSensitivity(!useIncentiveSensitivity)}>What-if $5,000 incentive sensitivity</button><p>Not confirmed. Kept separate from default lifecycle cost.</p></article>
+        <article className="yana-card yana-breakeven-summary">
+          <span>Breakeven year</span>
+          <strong>{breakevenDisplay}</strong>
+          <small>{activeOwnership.label} mode, $0 confirmed incentive</small>
+          <p>{activeOwnership.help}</p>
+          <dl className="mini-method-list">
+            <div><dt>Retrofit start cost</dt><dd>{currency(retrofit?.purchase_price)}</dd></div>
+            <div><dt>Includes donor ICE</dt><dd>{currency(retrofit?.donor_ice_purchase_price_added || 0)}</dd></div>
+            <div><dt>Manufacturing CO2e added</dt><dd>{tonnes(retrofit?.donor_ice_manufacturing_emissions_added_tonnes || 0)}</dd></div>
+          </dl>
+        </article>
         <article className="yana-card yana-chart-card">
-          <div className="yana-card-head"><div><span>Cumulative cost curve</span><h3>{vehicle} retrofit vs alternatives</h3></div><b>{currency(incentiveNetSavings || 0)}</b></div>
+          <div className="yana-card-head"><div><span>Cumulative cost curve</span><h3>{vehicle} retrofit vs alternatives</h3></div><p>Hover a year to see purchase plus operating cost up to that point.</p></div>
           <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={breakevenCostData.length ? breakevenCostData : costTimelineData} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
+            <LineChart data={costTimelineData} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="year" tickLine={false} axisLine={false} stroke="#6B7280" />
               <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
-              <Tooltip content={<GlassTooltip formatter={currency} />} />
+              <Tooltip content={<GlassTooltip formatter={currency} note={`Retrofit mode: ${activeOwnership.help}`} />} />
               <Legend />
-              {rows.map((row) => <Line key={row.type} type="monotone" dataKey={row.type} stroke={linePalette[row.type] || "#9CA3AF"} strokeWidth={3} dot={{ r: 4 }} connectNulls />)}
+              {rows.map((row) => <Line key={row.type} type="monotone" dataKey={row.type} stroke={linePalette[row.type] || "#9CA3AF"} strokeWidth={3} dot={{ r: 4 }} connectNulls isAnimationActive={false} />)}
             </LineChart>
           </ResponsiveContainer>
         </article>
@@ -1692,24 +1754,26 @@ function App() {
 
   const renderCarbon = () => (
     <>
-      <PageHeader title="Carbon impact" kicker="Funding and ESG view. Credits separate from cost." />
+      <PageHeader title="Carbon impact" kicker="Funding and ESG view. Credits stay separate from lifecycle cost." />
       <section className="yana-kpi-grid compact">
-        <article className="yana-kpi-card"><span>CO2e reduced</span><strong>{tonnes(iceComparison?.lifecycle_emissions_avoided_year_10 || 0)}</strong><small>Lifecycle basis</small></article>
-        <article className="yana-kpi-card"><span>Operating CO2e avoided</span><strong>{tonnes(iceComparison?.emissions_avoided_year_10 || 0)}</strong><small>Use phase</small></article>
+        <article className="yana-kpi-card"><span>CO2e reduced</span><strong>{tonnes(emissionsAvoidedVsIce)}</strong><small>Lifecycle basis at Year {horizon}</small></article>
+        <article className="yana-kpi-card"><span>Emissions breakeven</span><strong>{emissionsBreakevenText}</strong><small>Adjusted retrofit vs ICE</small></article>
         <article className="yana-kpi-card"><span>Carbon credit value</span><strong>{currency(storyCarbonValue)}</strong><small>Separate from lifecycle cost</small></article>
-        <article className="yana-kpi-card"><span>Funding signal</span><strong>Positive</strong><small>Validate ownership</small></article>
+        <article className="yana-kpi-card"><span>Funding signal</span><strong>Useful</strong><small>Validate credit ownership</small></article>
       </section>
-      <article className="yana-card yana-chart-card"><div className="yana-card-head"><div><span>Lifecycle emissions</span><h3>Manufacturing + operating emissions</h3></div></div><ResponsiveContainer width="100%" height={360}><BarChart data={emissionsChart}><CartesianGrid vertical={false} stroke="#E5E7EB" /><XAxis dataKey="type" tickLine={false} axisLine={false} stroke="#6B7280" /><YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" /><Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} />} /><Legend /><Bar dataKey="manufacturing" stackId="a" fill="#9CA3AF" /><Bar dataKey="operating" stackId="a" fill="#3B82F6" /></BarChart></ResponsiveContainer></article>
+      <article className="yana-card yana-chart-card"><div className="yana-card-head"><div><span>Lifecycle emissions</span><h3>Manufacturing + operating emissions</h3></div><p>Year 0 starts with manufacturing emissions. Operating emissions add over time.</p></div><ResponsiveContainer width="100%" height={360}><BarChart data={emissionsChart}><CartesianGrid vertical={false} stroke="#E5E7EB" /><XAxis dataKey="type" tickLine={false} axisLine={false} stroke="#6B7280" /><YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} /><Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} note="Lifecycle emissions = manufacturing emissions + operating emissions through the selected year." />} /><Legend /><Bar dataKey="manufacturing" name="Manufacturing" stackId="a" fill="#9CA3AF" /><Bar dataKey="operating" name="Operating" stackId="a" fill="#2563EB" /></BarChart></ResponsiveContainer></article>
     </>
   );
 
   const renderMethodology = () => (
     <>
-      <PageHeader title="Methodology" kicker="Formulas, assumptions, and validation status." />
-      <section className="yana-accordion-list">
-        {[detailContent.cost, detailContent.savings, detailContent.emissions, detailContent.scenario, detailContent.carbon, detailContent.assumptions].map((detail) => (
-          <details key={detail.title} className="yana-accordion"><summary>{detail.title}</summary><p>{detail.body}</p><dl>{detail.facts.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></details>
-        ))}
+      <PageHeader title="Methodology" kicker="Plain-language formulas behind the dashboard." />
+      <section className="methodology-clean-grid">
+        <article className="yana-card method-card"><span>Lifecycle cost</span><p>Purchase price plus annual operating cost for the selected number of years.</p><code>Cost = purchase price + annual operating cost × years</code></article>
+        <article className="yana-card method-card"><span>Retrofit ownership mode</span><p>Service uses retrofit price only. Used car adds 50% of ICE purchase price and 100% of ICE manufacturing emissions. 100% ICE adds the full ICE purchase price and 100% of ICE manufacturing emissions.</p></article>
+        <article className="yana-card method-card"><span>Maintenance</span><p>Maintenance is estimated from a cost-per-kilometre rate, then multiplied by annual kilometres.</p><code>Annual maintenance = km/year × maintenance cost per km</code></article>
+        <article className="yana-card method-card"><span>Emissions</span><p>Lifecycle emissions start at manufacturing emissions in Year 0, then add operating emissions each year.</p><code>Lifecycle CO2e = manufacturing CO2e + annual operating CO2e × years</code></article>
+        <article className="yana-card method-card"><span>Carbon credits</span><p>Carbon credits are shown separately from total lifecycle cost. The model estimates eligible EV charging value from kWh use, credit rate, and annual kilometres.</p></article>
       </section>
     </>
   );
@@ -1739,12 +1803,16 @@ function App() {
         <div className="yana-sidebar-foot"><img src="/assets/logos/bcit-logo.svg" alt="BCIT" /><span>BCIT Capstone</span></div>
       </aside>
       <section className="yana-workspace">
-        <header className="yana-topbar">
-          <div className="yana-search"><Search size={17} /><span>Find model or assumption</span></div>
-          <div className="yana-filter-row">
-            <select value={vehicle} onChange={(event) => setVehicle(event.target.value)}>{VEHICLES.map((item) => <option key={item}>{item}</option>)}</select>
-            <div className="top-horizon-toggle" role="radiogroup" aria-label="Forecast horizon">
-              {HORIZONS.map((item) => <button key={item} type="button" className={horizon === item ? "active" : ""} onClick={() => setHorizon(item)}>{item}Y</button>)}
+        <header className="yana-topbar compact-topbar">
+          <div className="yana-filter-row full-top-controls">
+            <select value={vehicle} onChange={(event) => setVehicle(event.target.value)} aria-label="Vehicle model">{VEHICLES.map((item) => <option key={item}>{item}</option>)}</select>
+            <div className="top-year-control">
+              <ControlSlider label="Year" value={horizon} min={0} max={10} step={1} format={(value) => `Year ${Math.round(value)}`} onChange={(value) => setHorizon(value)} />
+            </div>
+            <div className="top-mode-toggle" role="radiogroup" aria-label="Retrofit purchase mode">
+              {OWNERSHIP_MODES.map((mode) => (
+                <button key={mode.id} type="button" className={ownershipMode === mode.id ? "active" : ""} onClick={() => setOwnershipMode(mode.id)}>{mode.label}</button>
+              ))}
             </div>
           </div>
         </header>

@@ -987,6 +987,21 @@ function LayerDrawer({ detail, onClose }) {
         <p className="eyebrow">Deep layer</p>
         <h2>{detail.title}</h2>
         <p>{detail.body}</p>
+        {detail.team && (
+          <div className="team-showcase-grid">
+            {detail.team.map((member) => (
+              <article key={member.name} className={`team-avatar-card tone-${member.tone}`}>
+                <div className="team-face-orb" aria-hidden="true">
+                  <span className="face-hair" />
+                  <span className="face-head"><i /><i /></span>
+                  <span className="face-smile" />
+                </div>
+                <strong>{member.name}</strong>
+                <small>{member.role}</small>
+              </article>
+            ))}
+          </div>
+        )}
         <dl className="insight-facts layer-facts">
           {detail.facts.map((fact) => (
             <div key={fact.label}>
@@ -1984,10 +1999,14 @@ function App() {
     },
     team: {
       title: "Project team and oversight",
-      body: "This capstone dashboard was developed as a BCIT student research project for BlueForce Energy. The credit is intentionally kept in a quiet global layer so the app still feels client-facing.",
-      takeaway: "Add exact BCIT instructor/supervisor names here once the team confirms how they should be credited.",
+      body: "BCIT student research team supporting BlueForce Energy with retrofit forecasting, scenario analysis, and client-facing visualization.",
+      takeaway: "Faculty names can be added once the team confirms exact spelling and preferred titles.",
+      team: [
+        { name: "Saad", role: "Scenario model and dashboard", tone: "male" },
+        { name: "Ocean", role: "Research and validation", tone: "female" },
+        { name: "Rostislav", role: "Analysis and deliverables", tone: "male-alt" },
+      ],
       facts: [
-        ...PROJECT_TEAM.map((member) => ({ label: member.name, value: member.role })),
         ...BCIT_GUIDANCE_TEAM,
       ],
     }

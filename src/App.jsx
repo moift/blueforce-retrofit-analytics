@@ -984,7 +984,7 @@ function LayerDrawer({ detail, onClose }) {
         <button className="drawer-close layer-close" type="button" onClick={onClose} aria-label="Close detail layer">
           <X size={18} />
         </button>
-        <p className="eyebrow">Deep layer</p>
+        <p className="eyebrow">Project details</p>
         <h2>{detail.title}</h2>
         <p>{detail.body}</p>
         {detail.team && (
@@ -1546,7 +1546,7 @@ function EVNetworkMap({ stations, selectedStation, onSelectStation }) {
     map.flyTo([selectedStation.lat, selectedStation.lng], Math.max(map.getZoom(), 13), { duration: 0.7 });
   }, [selectedStation]);
 
-  return <div className="ev-map-canvas" ref={containerRef} aria-label="Greater Vancouver EV station map" />;
+  return <div className="ev-map-canvas" ref={containerRef} aria-label="BC EV station map" />;
 }
 
 function App() {

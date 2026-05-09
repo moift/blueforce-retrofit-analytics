@@ -28,11 +28,14 @@ import {
   Home,
   Info,
   Leaf,
+  Linkedin,
   LockKeyhole,
   LogIn,
   LogOut,
+  Mail,
   MapPin,
   MousePointerClick,
+  Phone,
   RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
@@ -103,7 +106,7 @@ const VEHICLES = ["F-150", "F-350", "F-450"];
 const OWNERSHIP_MODES = [
   { id: "service", label: "Service", donorCostFraction: 0, donorEmissions: false, help: "Retrofit service only. No donor ICE purchase price or manufacturing emissions are added." },
   { id: "used", label: "Used car", donorCostFraction: 0.5, donorEmissions: true, help: "Adds 50% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
-  { id: "full", label: "Full ICE", donorCostFraction: 1, donorEmissions: true, help: "Adds 100% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
+  { id: "full", label: "New car", donorCostFraction: 1, donorEmissions: true, help: "Adds 100% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
 ];
 const DEFAULT_TUNER_INDEX = {
   base: 0,
@@ -998,6 +1001,11 @@ function LayerDrawer({ detail, onClose }) {
                 </div>
                 <strong>{member.name}</strong>
                 <small>{member.role}</small>
+                <div className="team-contact-row" aria-label={`${member.name} contact placeholders`}>
+                  <span title="LinkedIn placeholder"><Linkedin size={13} /></span>
+                  <span title="Email placeholder"><Mail size={13} /></span>
+                  <span title="Phone placeholder"><Phone size={13} /></span>
+                </div>
               </article>
             ))}
           </div>
@@ -1482,6 +1490,52 @@ function ControlSlider({ label, value, min, max, step, format, onChange }) {
   );
 }
 
+function usePremiumInteractionFeedback(enabled = true) {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const playTone = (event) => {
+      const target = event.target?.closest?.("button, a, summary, input[type='range'], select, .smooth-slider");
+      if (!target || target.disabled || target.getAttribute("aria-disabled") === "true") return;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = audioRef.current || new AudioContextClass();
+      audioRef.current = context;
+      if (context.state === "suspended") context.resume();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(420, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(250, context.currentTime + 0.055);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.018, context.currentTime + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.07);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(context.currentTime);
+      oscillator.stop(context.currentTime + 0.075);
+    };
+    window.addEventListener("pointerdown", playTone, { passive: true });
+    return () => window.removeEventListener("pointerdown", playTone);
+  }, [enabled]);
+}
+
+function useLiquidPointerEffect() {
+  useEffect(() => {
+    const selector = ".yana-card, .yana-kpi-card, .yana-path-card, .stakeholder-card, .locked-analytics-card, .method-step-card, .yana-sidebar button";
+    const handlePointerMove = (event) => {
+      const target = event.target?.closest?.(selector);
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      target.style.setProperty("--mx", `${event.clientX - rect.left}px`);
+      target.style.setProperty("--my", `${event.clientY - rect.top}px`);
+    };
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => window.removeEventListener("pointermove", handlePointerMove);
+  }, []);
+}
+
 function EVNetworkMap({ stations, selectedStation, onSelectStation }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
@@ -1576,6 +1630,9 @@ function App() {
     maintenanceInflation: 0,
     horizon: 10,
   });
+
+  usePremiumInteractionFeedback(isUnlocked);
+  useLiquidPointerEffect();
 
   const today = useMemo(
     () =>
@@ -1998,15 +2055,16 @@ function App() {
       ],
     },
     team: {
-      title: "Project team and oversight",
-      body: "BCIT student research team supporting BlueForce Energy with retrofit forecasting, scenario analysis, and client-facing visualization.",
-      takeaway: "Faculty names can be added once the team confirms exact spelling and preferred titles.",
+      title: "Team",
+      body: "Student-led applied research team building the retrofit decision model, data workflow, and client-facing application for BlueForce Energy.",
+      takeaway: "Professor and staff names can be added after the team confirms exact spelling, titles, and preferred acknowledgement format.",
       team: [
-        { name: "Saad", role: "Scenario model and dashboard", tone: "male" },
-        { name: "Ocean", role: "Research and validation", tone: "female" },
-        { name: "Rostislav", role: "Analysis and deliverables", tone: "male-alt" },
+        { name: "Saad", role: "Product design, app development, data modeling, research", tone: "male" },
+        { name: "Ross", role: "Scenario analysis, modeling support, research validation", tone: "male-alt" },
+        { name: "Ocean", role: "Research compilation, documentation, validation support", tone: "female" },
       ],
       facts: [
+        { label: "Student team", value: "Saad, Ross, Ocean" },
         ...BCIT_GUIDANCE_TEAM,
       ],
     }
@@ -2135,6 +2193,22 @@ function App() {
     });
     return item;
   });
+  const simulatedBreakevenYear = simulatedRetrofit && simulatedIce
+    ? Array.from({ length: Math.floor(simulatorInputs.horizon) + 1 }, (_, year) => year).find((year) => {
+        const retrofitCost = (Number(simulatedRetrofit.purchase_price || 0) + Number(simulatedRetrofit.annualOperating || 0) * year) * simulatorInputs.fleetSize;
+        const iceCost = (Number(simulatedIce.purchase_price || 0) + Number(simulatedIce.annualOperating || 0) * year) * simulatorInputs.fleetSize;
+        return retrofitCost <= iceCost;
+      })
+    : null;
+  const simulatedBreakevenText = simulatedBreakevenYear == null ? `>${Math.round(simulatorInputs.horizon)} years` : `Year ${simulatedBreakevenYear}`;
+
+  const emissionsTimelineData = Array.from({ length: 11 }, (_, year) => {
+    const item = { year: `${year}Y` };
+    rows.forEach((row) => {
+      item[row.type] = lifecycleEmissionsAt(row, year);
+    });
+    return item;
+  });
 
 
   const selectedPage = navItems.find((item) => item.id === activeView) || navItems[0];
@@ -2201,6 +2275,7 @@ function App() {
           </div>
           <div className="live-summary-row">
             <span><b>{currency(simulatedSavings)}</b> difference vs ICE</span>
+            <span><b>{simulatedBreakevenText}</b> breakeven vs ICE</span>
             <span><b>{annual(simulatedRetrofit?.annualMaintenance || 0)}</b> maintenance</span>
             <span><b>{tonnes(simulatedRetrofit?.lifecycleEmissions || 0)}</b> lifecycle CO2e</span>
           </div>
@@ -2348,7 +2423,10 @@ function App() {
         <article className="yana-kpi-card"><span>Carbon credit value</span><strong>{currency(storyCarbonValue)}</strong><small>Separate from lifecycle cost</small></article>
         <article className="yana-kpi-card"><span>Funding signal</span><strong>Useful</strong><small>Validate credit ownership</small></article>
       </section>
-      <article className="yana-card yana-chart-card"><div className="yana-card-head"><div><span>Lifecycle emissions</span><h3>Manufacturing + operating emissions</h3></div><p>Year 0 starts with manufacturing emissions. Operating emissions add over time.</p></div><ResponsiveContainer width="100%" height={360}><BarChart data={emissionsChart}><CartesianGrid vertical={false} stroke="#E5E7EB" /><XAxis dataKey="type" tickLine={false} axisLine={false} stroke="#6B7280" /><YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} /><Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} note="Lifecycle emissions = manufacturing emissions + operating emissions through the selected year." />} /><Legend /><Bar dataKey="manufacturing" name="Manufacturing" stackId="a" fill="#9CA3AF" /><Bar dataKey="operating" name="Operating" stackId="a" fill="#2563EB" /></BarChart></ResponsiveContainer></article>
+      <section className="carbon-chart-grid">
+        <article className="yana-card yana-chart-card"><div className="yana-card-head"><div><span>Lifecycle emissions</span><h3>Manufacturing + operating emissions</h3></div><p>Year 0 starts with manufacturing emissions. Operating emissions add over time.</p></div><ResponsiveContainer width="100%" height={330}><BarChart data={emissionsChart}><CartesianGrid vertical={false} stroke="#E5E7EB" /><XAxis dataKey="type" tickLine={false} axisLine={false} stroke="#6B7280" /><YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} /><Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} note="Lifecycle emissions = manufacturing emissions + operating emissions through the selected year." />} /><Legend /><Bar dataKey="manufacturing" name="Manufacturing" stackId="a" fill="#9CA3AF" /><Bar dataKey="operating" name="Operating" stackId="a" fill="#2563EB" /></BarChart></ResponsiveContainer></article>
+        <article className="yana-card yana-chart-card"><div className="yana-card-head"><div><span>Emissions breakeven</span><h3>{vehicle} lifecycle emissions curve</h3></div><p>Shows whether retrofit lifecycle CO2e catches or beats the ICE pathway over ten years.</p></div><ResponsiveContainer width="100%" height={330}><LineChart data={emissionsTimelineData} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}><CartesianGrid vertical={false} stroke="#E5E7EB" /><XAxis dataKey="year" tickLine={false} axisLine={false} stroke="#6B7280" /><YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} /><Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} note="Lifecycle emissions include manufacturing emissions at Year 0 plus operating emissions over time." />} /><Legend />{rows.map((row) => <Line key={row.type} type="monotone" dataKey={row.type} stroke={linePalette[row.type] || "#9CA3AF"} strokeWidth={3} dot={{ r: 4 }} connectNulls isAnimationActive={false} />)}</LineChart></ResponsiveContainer></article>
+      </section>
     </>
   );
 
@@ -2455,12 +2533,31 @@ function App() {
       </section>
       <section className="stakeholder-proof-grid">
         <article className="yana-card proof-card"><CircleDollarSign size={18} /><span>Financial proof</span><strong>{currency(retrofitTunedRow?.tunedCost ?? 0)}</strong><small>Retrofit lifecycle cost at Year {horizon}</small></article>
-        <article className="yana-card proof-card"><Leaf size={18} /><span>Climate proof</span><strong>{tonnes(retrofitTunedRow?.lifecycleEmissions ?? 0)}</strong><small>Retrofit lifecycle emissions</small></article>
-        <article className="yana-card proof-card"><MapPin size={18} /><span>Infrastructure proof</span><strong>{evNetworkStats.cities} BC cities</strong><small>Representative charging network view</small></article>
+        <article className="yana-card proof-card"><Leaf size={18} /><span>Climate proof</span><strong>{tonnes(lifecycleEmissionsAt(retrofitTunedRow, horizon))}</strong><small>Retrofit lifecycle emissions</small></article>
+        <article className="yana-card proof-card"><MapPin size={18} /><span>Infrastructure proof</span><strong className="proof-inline-value"><b>{evNetworkStats.cities}</b><em>BC cities</em></strong><small>Representative charging network view</small></article>
+      </section>
+      <section className="advanced-analytics-preview" aria-label="Advanced analytics preview">
+        <div className="advanced-preview-head">
+          <span>Future capability</span>
+          <h3>Advanced analytics</h3>
+          <p>Locked concept layer for client conversations: deeper customer, funding, and investor workflows can be added after validation.</p>
+        </div>
+        {[
+          { title: "Customer proposal pack", copy: "Auto-generate a fleet transition summary for procurement teams." },
+          { title: "Government funding view", copy: "Package CO2e, infrastructure, and grant-readiness metrics." },
+          { title: "Investor scale model", copy: "Compare rollout cases across vehicle classes and fleet growth." },
+        ].map((item) => (
+          <article key={item.title} className="locked-analytics-card" aria-disabled="true">
+            <LockKeyhole size={17} />
+            <span>Locked</span>
+            <strong>{item.title}</strong>
+            <small>{item.copy}</small>
+          </article>
+        ))}
       </section>
       <article className="yana-card stakeholder-note-card">
         <span>How to use this page</span>
-        <p>Use the customer lens when discussing fleet purchase decisions. Use the funding lens when discussing emissions reduction, grant support, or public-sector value. This page is intentionally a test layer and can be removed later.</p>
+        <p>Use the customer lens for fleet purchase decisions. Use the funding lens for emissions reduction, grant support, and public-sector value. The locked modules show where the platform can expand next.</p>
       </article>
     </>
   );
@@ -2468,12 +2565,30 @@ function App() {
   const renderMethodology = () => (
     <>
       <PageHeader title="Methodology" kicker="Plain-language formulas behind the dashboard." />
+      <section className="method-flow-strip">
+        {[
+          ["1", "Inputs", "Vehicle price, km/year, fuel/electricity, maintenance, emissions"],
+          ["2", "Pathways", "ICE/diesel, OEM EV, and BlueForce retrofit"],
+          ["3", "Forecast", "Year 0 to Year 10 lifecycle cost and emissions"],
+          ["4", "Decision", "Lowest cost, emissions avoided, breakeven, funding signal"],
+        ].map(([step, title, copy]) => (
+          <article key={step} className="method-step-card">
+            <b>{step}</b>
+            <strong>{title}</strong>
+            <small>{copy}</small>
+          </article>
+        ))}
+      </section>
       <section className="methodology-clean-grid">
         <article className="yana-card method-card"><span>Lifecycle cost</span><p>Purchase price plus annual operating cost for the selected number of years.</p><code>Cost = purchase price + annual operating cost × years</code></article>
-        <article className="yana-card method-card"><span>Retrofit ownership mode</span><p>Service uses retrofit price only. Used car adds 50% of ICE purchase price and 100% of ICE manufacturing emissions. 100% ICE adds the full ICE purchase price and 100% of ICE manufacturing emissions.</p></article>
+        <article className="yana-card method-card"><span>Retrofit purchase mode</span><p>Service uses retrofit price only. Used car adds 50% of matching ICE purchase price and 100% of matching ICE manufacturing emissions. New car adds 100% of matching ICE purchase price and 100% of matching ICE manufacturing emissions.</p></article>
         <article className="yana-card method-card"><span>Maintenance</span><p>Maintenance is estimated from a cost-per-kilometre rate, then multiplied by annual kilometres.</p><code>Annual maintenance = km/year × maintenance cost per km</code></article>
         <article className="yana-card method-card"><span>Emissions</span><p>Lifecycle emissions start at manufacturing emissions in Year 0, then add operating emissions each year.</p><code>Lifecycle CO2e = manufacturing CO2e + annual operating CO2e × years</code></article>
         <article className="yana-card method-card"><span>Carbon credits</span><p>Carbon credits are shown separately from total lifecycle cost. The model estimates eligible EV charging value from kWh use, credit rate, and annual kilometres.</p></article>
+      </section>
+      <section className="yana-card method-disclaimer-card">
+        <span>Client validation note</span>
+        <p>Vehicle-cost modes are assumptions for discussion, not confirmed BlueForce pricing. The final model should confirm donor vehicle ownership, battery details, LCFS credit ownership, and maintenance split before client recommendations.</p>
       </section>
     </>
   );
@@ -2538,8 +2653,8 @@ function App() {
           ))}
         </nav>
         <button className="yana-sidebar-foot" type="button" onClick={() => setDetailOpen("team")} title="View project team">
-          <img src="/assets/logos/bcit-logo.svg" alt="BCIT" />
-          <span>BCIT Capstone</span>
+          <Users size={18} />
+          <span>Team</span>
         </button>
       </aside>
       <section className="yana-workspace">
@@ -2553,6 +2668,7 @@ function App() {
               {OWNERSHIP_MODES.map((mode) => (
                 <button key={mode.id} type="button" className={ownershipMode === mode.id ? "active" : ""} onClick={() => setOwnershipMode(mode.id)}>{mode.label}</button>
               ))}
+              <span className="top-mode-note">Retrofit service plus optional vehicle-cost assumption</span>
             </div>
           </div>
           <button className="topbar-lock-button" type="button" onClick={handleLockApp} title="Lock app and return to sign in">

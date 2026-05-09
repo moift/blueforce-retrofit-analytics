@@ -23,7 +23,6 @@ import {
   Car,
   CircleDollarSign,
   ClipboardList,
-  ExternalLink,
   Gauge,
   Home,
   Info,
@@ -106,7 +105,7 @@ const VEHICLES = ["F-150", "F-350", "F-450"];
 const OWNERSHIP_MODES = [
   { id: "service", label: "Service", donorCostFraction: 0, donorEmissions: false, help: "Retrofit service only. No donor ICE purchase price or manufacturing emissions are added." },
   { id: "used", label: "Used car", donorCostFraction: 0.5, donorEmissions: true, help: "Adds 50% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
-  { id: "full", label: "New car", donorCostFraction: 1, donorEmissions: true, help: "Adds 100% of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
+  { id: "full", label: "New car", donorCostFraction: 1, donorEmissions: true, help: "Adds a selected percentage of the matching ICE purchase price and 100% of matching ICE manufacturing emissions to retrofit." },
 ];
 const DEFAULT_TUNER_INDEX = {
   base: 0,
@@ -143,6 +142,14 @@ const linePalette = {
   ICE: "#6B7280",
   "OEM EV": "#10B981",
   Diesel: "#F59E0B",
+};
+
+const CONNECTOR_GLOSSARY = {
+  "Level 2": "Common AC charging. Slower than DC fast charging; useful for workplace, overnight, and longer parking stops.",
+  CCS: "Combined Charging System. A common DC fast-charging connector used by many newer EVs in North America.",
+  CHAdeMO: "Older DC fast-charging connector. Still appears at some stations, but is less common on newer North American EVs.",
+  J1772: "Standard Level 2 plug used by many non-Tesla EVs for AC charging.",
+  "NACS/Tesla": "Tesla-style North American Charging Standard connector. Adoption is growing across newer EV networks.",
 };
 
 const scenarioLineColors = ["#111827", "#5E6671", "#9CA3AF", "#C7CBD1", "#E5E7EB"];
@@ -568,27 +575,10 @@ const GREATER_VANCOUVER_STATIONS = [
 ];
 
 const EV_NETWORK_SOURCE_NOTE = "BC-wide infrastructure planning view. Locations and charger counts are representative planning clusters and should be validated against NRCan or Open Charge Map before final client recommendations. Real-time charger availability is not included.";
-const EV_STATION_PHOTO = {
-  src: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/EV_Charging_Station_%2853857454477%29.jpg/1280px-EV_Charging_Station_%2853857454477%29.jpg",
-  alt: "Real electric vehicle charging station with an EV connected",
-  credit: "Photo: Ajay Suresh, CC BY 2.0",
-};
-
-const FORD_REFERENCE_LINKS = {
-  "F-150": "https://www.ford.ca/trucks/f150/360/",
-  "F-350": "https://www.ford.ca/trucks/super-duty/",
-  "F-450": "https://www.ford.ca/trucks/super-duty/",
-};
-
 const PROJECT_TEAM = [
-  { name: "Saad", role: "Scenario model and dashboard" },
-  { name: "Ocean", role: "Research and validation" },
-  { name: "Rostislav", role: "Analysis and deliverables" },
-];
-
-const BCIT_GUIDANCE_TEAM = [
-  { label: "BCIT teaching team", value: "Faculty guidance and project oversight" },
-  { label: "Industry partner", value: "BlueForce Energy" },
+  { name: "Saad", role: "App development and data analyst", tone: "male" },
+  { name: "Ross", role: "Data modelling and research analyst", tone: "male-alt" },
+  { name: "Ocean", role: "QA and data analyst", tone: "female" },
 ];
 
 const explanations = {
@@ -687,20 +677,23 @@ function applyForecastFields(row) {
   };
 }
 
-function retrofitOwnershipAdjustment(row, familyRows, ownershipMode) {
+function retrofitOwnershipAdjustment(row, familyRows, ownershipMode, newCarPercent = 100) {
   if (row.type !== "Retrofit") return row;
   const mode = OWNERSHIP_MODES.find((item) => item.id === ownershipMode) || OWNERSHIP_MODES[0];
   const donorIce = familyRows.find((candidate) => candidate.type === "ICE") || familyRows.find((candidate) => candidate.type === "Diesel");
-  const donorPurchase = Number(donorIce?.purchase_price || 0) * mode.donorCostFraction;
+  const donorFraction = mode.id === "full" ? Math.max(0.1, Math.min(1, Number(newCarPercent || 100) / 100)) : mode.donorCostFraction;
+  const donorPurchase = Number(donorIce?.purchase_price || 0) * donorFraction;
   const donorManufacturing = mode.donorEmissions ? Number(donorIce?.manufacturing_emissions_tonnes || 0) : 0;
   return {
     ...row,
     purchase_price: Number(row.purchase_price || 0) + donorPurchase,
     base_retrofit_purchase_price: Number(row.purchase_price || 0),
     donor_ice_purchase_price_added: donorPurchase,
+    donor_ice_purchase_price_fraction: donorFraction,
     donor_ice_manufacturing_emissions_added_tonnes: donorManufacturing,
     manufacturing_emissions_tonnes: Number(row.manufacturing_emissions_tonnes || 0) + donorManufacturing,
     ownership_mode: mode.id,
+    new_car_price_percent: mode.id === "full" ? Number(newCarPercent || 100) : null,
   };
 }
 
@@ -763,6 +756,16 @@ function HelpTip({ text }) {
     <span className="help-tip" tabIndex="0" aria-label={text}>
       <Info size={13} />
       <span>{text}</span>
+    </span>
+  );
+}
+
+function ConnectorTag({ type }) {
+  const text = CONNECTOR_GLOSSARY[type] || "Connector type used at this station.";
+  return (
+    <span className="connector-tag" tabIndex="0" aria-label={`${type}: ${text}`}>
+      {type}
+      <span className="connector-tip">{text}</span>
     </span>
   );
 }
@@ -989,7 +992,7 @@ function LayerDrawer({ detail, onClose }) {
         </button>
         <p className="eyebrow">Project details</p>
         <h2>{detail.title}</h2>
-        <p>{detail.body}</p>
+        {detail.body && <p>{detail.body}</p>}
         {detail.team && (
           <div className="team-showcase-grid">
             {detail.team.map((member) => (
@@ -1010,14 +1013,16 @@ function LayerDrawer({ detail, onClose }) {
             ))}
           </div>
         )}
-        <dl className="insight-facts layer-facts">
-          {detail.facts.map((fact) => (
-            <div key={fact.label}>
-              <dt>{fact.label}</dt>
-              <dd>{fact.value}</dd>
-            </div>
-          ))}
-        </dl>
+        {detail.facts?.length > 0 && (
+          <dl className="insight-facts layer-facts">
+            {detail.facts.map((fact) => (
+              <div key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
         {detail.takeaway && (
           <div className="layer-takeaway">
             <Sparkles size={18} />
@@ -1549,9 +1554,9 @@ function EVNetworkMap({ stations, selectedStation, onSelectStation }) {
       scrollWheelZoom: true,
     }).setView([53.6, -125.2], 5);
 
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 18,
-      attribution: "Tiles &copy; Esri, OpenStreetMap contributors",
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
     }).addTo(map);
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -1610,6 +1615,7 @@ function App() {
   const [scenario, setScenario] = useState("base");
   const [horizon, setHorizon] = useState(10);
   const [ownershipMode, setOwnershipMode] = useState("service");
+  const [newCarPercent, setNewCarPercent] = useState(100);
   const [selectedType, setSelectedType] = useState("Retrofit");
   const [stationSearch, setStationSearch] = useState("");
   const [stationCity, setStationCity] = useState("All");
@@ -1654,7 +1660,7 @@ function App() {
     }));
   }, [data, vehicle]);
 
-  const rows = useMemo(() => baseRows.map((row) => retrofitOwnershipAdjustment(row, baseRows, ownershipMode)), [baseRows, ownershipMode]);
+  const rows = useMemo(() => baseRows.map((row) => retrofitOwnershipAdjustment(row, baseRows, ownershipMode, newCarPercent)), [baseRows, ownershipMode, newCarPercent]);
 
   useEffect(() => {
     if (rows.length && !rows.some((row) => row.type === selectedType)) {
@@ -2056,17 +2062,10 @@ function App() {
     },
     team: {
       title: "Team",
-      body: "Student-led applied research team building the retrofit decision model, data workflow, and client-facing application for BlueForce Energy.",
-      takeaway: "Professor and staff names can be added after the team confirms exact spelling, titles, and preferred acknowledgement format.",
-      team: [
-        { name: "Saad", role: "Product design, app development, data modeling, research", tone: "male" },
-        { name: "Ross", role: "Scenario analysis, modeling support, research validation", tone: "male-alt" },
-        { name: "Ocean", role: "Research compilation, documentation, validation support", tone: "female" },
-      ],
-      facts: [
-        { label: "Student team", value: "Saad, Ross, Ocean" },
-        ...BCIT_GUIDANCE_TEAM,
-      ],
+      body: "",
+      takeaway: "",
+      team: PROJECT_TEAM,
+      facts: [],
     }
   };
 
@@ -2131,11 +2130,12 @@ function App() {
         const modelRows = source.filter((row) => row.model === selectedRow.model);
         return values.map((value) => {
           const match = modelRows.find((row) => Number(row.year) === horizon && Number(row[scenarioTabConfig.parameter]) === Number(value));
+          const baseValue = Number(value) === 0 && scenarioHasZeroBaseline(activeScenarioTab)
+            ? scenarioZeroBaselineValue(activeScenarioTab, selectedRow)
+            : Number(match?.[scenarioTabConfig.metric] || 0);
           return {
             label: scenarioSeriesLabel(scenarioTabConfig.parameter, value, scenarioTabConfig),
-            value: Number(value) === 0 && scenarioHasZeroBaseline(activeScenarioTab)
-              ? scenarioZeroBaselineValue(activeScenarioTab, selectedRow)
-              : Number(match?.[scenarioTabConfig.metric] || 0),
+            value: baseValue + (match ? scenarioOwnershipCostAdjustment(selectedRow, activeScenarioTab, value) : 0),
           };
         });
       })();
@@ -2161,6 +2161,27 @@ function App() {
       method: "Each bar starts with manufacturing emissions, then stacks operating emissions through the selected year.",
     },
   };
+  const scenarioStats = activeScenarioTab === "emissions"
+    ? {
+        primary: tonnes(lifecycleEmissionsAt(retrofitTunedRow, horizon)),
+        secondary: `${vehicle} retrofit lifecycle CO2e`,
+        delta: tonnes(emissionsAvoidedVsIce),
+        deltaLabel: "Avoided vs ICE",
+      }
+    : (() => {
+        const numericValues = scenarioTabChart.map((item) => Number(item.value || 0)).filter(Number.isFinite);
+        const minValue = numericValues.length ? Math.min(...numericValues) : 0;
+        const maxValue = numericValues.length ? Math.max(...numericValues) : 0;
+        return {
+          primary: compactMoney(maxValue),
+          secondary: `${scenarioTabChart.length} model cases at Year ${horizon}`,
+          delta: compactMoney(maxValue - minValue),
+          deltaLabel: "Range across cases",
+        };
+      })();
+  const scenarioCurrentLabel = activeScenarioTab === "emissions"
+    ? "Lifecycle emissions"
+    : `${scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.label || "Scenario"}`;
 
   const updateSimulatorInput = (key, value) => {
     const next = Number(value);
@@ -2316,17 +2337,6 @@ function App() {
   const renderComparison = () => (
     <>
       <PageHeader title="Vehicle comparison" kicker="Three pathways, same truck class." />
-      <article className="yana-card ford-reference-card">
-        <div>
-          <span>Official vehicle reference</span>
-          <h3>{vehicle === "F-150" ? "Ford F-150 360 viewer" : "Ford Super Duty reference"}</h3>
-          <p>{vehicle === "F-150" ? "Open Ford's official 360 viewer in a separate tab. Ford blocks embedded viewing, so the in-app model stays representative and client-safe." : "Open Ford's official Super Duty reference in a separate tab. The in-app model remains a licensed representative class view."}</p>
-        </div>
-        <a href={FORD_REFERENCE_LINKS[vehicle]} target="_blank" rel="noreferrer">
-          <ExternalLink size={17} />
-          Open official Ford view
-        </a>
-      </article>
       <section className="yana-comparison-grid">
         {comparisonCards.map((row) => (
           <article key={row.model} className={`yana-path-card ${row.type === best?.type ? "best" : ""} ${row.type === selectedType ? "selected" : ""}`} onClick={() => setSelectedType(row.type)}>
@@ -2351,9 +2361,10 @@ function App() {
     <>
       <PageHeader title="Scenario analysis" kicker="One driver changes at a time." />
       <section className="yana-tabs">{scenarioTabs.map((tab) => <button key={tab.id} type="button" className={activeScenarioTab === tab.id ? "active" : ""} onClick={() => { setScenarioTab(tab.id); if (tab.id !== "emissions") setScenario(tab.id); }}>{tab.label}</button>)}</section>
-      <section className="scenario-explain-grid">
-        <article className="yana-card scenario-note"><span>How to read this</span><p>{scenarioContext[activeScenarioTab]?.axis}</p></article>
-        <article className="yana-card scenario-note"><span>Assumption</span><p>{scenarioContext[activeScenarioTab]?.method}</p></article>
+      <section className="scenario-summary-strip">
+        <article className="yana-card scenario-note"><span>Question</span><strong>What changes when one input moves?</strong><p>{scenarioContext[activeScenarioTab]?.axis}</p></article>
+        <article className="yana-card scenario-note compact"><span>{scenarioCurrentLabel}</span><strong>{scenarioStats.primary}</strong><p>{scenarioStats.secondary}</p></article>
+        <article className="yana-card scenario-note compact"><span>{scenarioStats.deltaLabel}</span><strong>{scenarioStats.delta}</strong><p>{scenarioContext[activeScenarioTab]?.method}</p></article>
       </section>
       <section className="yana-card yana-chart-card">
         <div className="yana-card-head"><div><span>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.label}</span><h3>{selectedRow.type} sensitivity</h3></div><p>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.insight}</p></div>
@@ -2369,13 +2380,13 @@ function App() {
               <Bar dataKey="operating" name="Operating" stackId="a" fill="#2563EB" />
             </BarChart>
           ) : (
-            <BarChart data={scenarioTabChart} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
+            <LineChart data={scenarioTabChart} margin={{ top: 18, right: 24, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="#6B7280" />
               <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
               <Tooltip content={<GlassTooltip formatter={currency} note={scenarioContext[activeScenarioTab]?.method} />} />
-              <Bar dataKey="value" name={`${horizon}-year cost`} fill={linePalette[selectedRow.type] || "#2563EB"} radius={[8, 8, 0, 0]} />
-            </BarChart>
+              <Line type="monotone" dataKey="value" name={`${horizon}-year cost`} stroke={linePalette[selectedRow.type] || "#2563EB"} strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 7 }} isAnimationActive animationDuration={260} />
+            </LineChart>
           )}
         </ResponsiveContainer>
       </section>
@@ -2472,7 +2483,7 @@ function App() {
                 <div><dt>Total plugs</dt><dd>{activeStation.plugs}</dd></div>
                 <div><dt>DC fast</dt><dd>{activeStation.fastChargers}</dd></div>
                 <div><dt>Level 2</dt><dd>{activeStation.level2}</dd></div>
-                <div><dt>Connectors</dt><dd>{activeStation.connectorTypes.join(", ")}</dd></div>
+                <div><dt>Connectors</dt><dd className="connector-chip-row">{activeStation.connectorTypes.map((type) => <ConnectorTag key={type} type={type} />)}</dd></div>
               </dl>
               <div className="ev-glass-note">
                 <Zap size={17} />
@@ -2540,12 +2551,12 @@ function App() {
         <div className="advanced-preview-head">
           <span>Future capability</span>
           <h3>Advanced analytics</h3>
-          <p>Locked concept layer for client conversations: deeper customer, funding, and investor workflows can be added after validation.</p>
+          <p>Future modules after validation.</p>
         </div>
         {[
-          { title: "Customer proposal pack", copy: "Auto-generate a fleet transition summary for procurement teams." },
-          { title: "Government funding view", copy: "Package CO2e, infrastructure, and grant-readiness metrics." },
-          { title: "Investor scale model", copy: "Compare rollout cases across vehicle classes and fleet growth." },
+          { title: "Customer pack", copy: "Procurement-ready summary." },
+          { title: "Funding view", copy: "Grant evidence layer." },
+          { title: "Scale model", copy: "Investor rollout cases." },
         ].map((item) => (
           <article key={item.title} className="locked-analytics-card" aria-disabled="true">
             <LockKeyhole size={17} />
@@ -2617,7 +2628,7 @@ function App() {
       }, 850);
       return;
     }
-    setLoginError("Use the demo access code: blueforce");
+    setLoginError("Access code not recognized.");
   };
 
   const handleLockApp = () => {
@@ -2628,20 +2639,9 @@ function App() {
     setIsUnlocked(false);
   };
 
-  if (!isUnlocked) {
-    return (
-      <LoginWall
-        loginCode={loginCode}
-        loginError={loginError}
-        isUnlocking={loginUnlocking}
-        onCodeChange={setLoginCode}
-        onSubmit={handleLoginSubmit}
-      />
-    );
-  }
-
   return (
-    <main className="yana-app-shell">
+    <>
+      <main className={isUnlocked ? "yana-app-shell" : "yana-app-shell app-locked-behind"} aria-hidden={!isUnlocked}>
       <aside className="yana-sidebar" aria-label="Primary navigation">
         <div className="yana-sidebar-logo"><img src="/assets/logos/blueforce-logo.png" alt="BlueForce Energy" /></div>
         <nav>
@@ -2659,7 +2659,7 @@ function App() {
       </aside>
       <section className="yana-workspace">
         <header className="yana-topbar compact-topbar">
-          <div className="yana-filter-row full-top-controls">
+          <div className={ownershipMode === "full" ? "yana-filter-row full-top-controls new-car-active" : "yana-filter-row full-top-controls"}>
             <select value={vehicle} onChange={(event) => setVehicle(event.target.value)} aria-label="Vehicle model">{VEHICLES.map((item) => <option key={item}>{item}</option>)}</select>
             <div className="top-year-control">
               <ControlSlider label="Year" value={horizon} min={0} max={10} step={1} format={(value) => `Year ${Math.round(value)}`} onChange={(value) => setHorizon(value)} />
@@ -2668,13 +2668,17 @@ function App() {
               {OWNERSHIP_MODES.map((mode) => (
                 <button key={mode.id} type="button" className={ownershipMode === mode.id ? "active" : ""} onClick={() => setOwnershipMode(mode.id)}>{mode.label}</button>
               ))}
-              <span className="top-mode-note">Retrofit service plus optional vehicle-cost assumption</span>
             </div>
+            {ownershipMode === "full" && (
+              <div className="top-percent-control">
+                <ControlSlider label="New car price" value={newCarPercent} min={10} max={100} step={10} format={(value) => `${Math.round(value)}%`} onChange={(value) => setNewCarPercent(value)} />
+              </div>
+            )}
+            <button className="topbar-lock-button" type="button" onClick={handleLockApp} title="Lock app and return to sign in">
+              <LogOut size={15} />
+              <span>Lock</span>
+            </button>
           </div>
-          <button className="topbar-lock-button" type="button" onClick={handleLockApp} title="Lock app and return to sign in">
-            <LogOut size={15} />
-            <span>Lock</span>
-          </button>
         </header>
         <div className="yana-title-row">
           <div><p>{today}</p><h1>Retrofit Transition Decision Platform</h1></div>
@@ -2682,14 +2686,39 @@ function App() {
         </div>
         <section className="yana-page">{(pageContent[activeView] || renderOverview)()}</section>
       </section>
-      <LayerDrawer detail={detailOpen ? detailContent[detailOpen] : null} onClose={() => setDetailOpen(null)} />
-    </main>
+        <LayerDrawer detail={detailOpen ? detailContent[detailOpen] : null} onClose={() => setDetailOpen(null)} />
+      </main>
+      {!isUnlocked && (
+        <LoginWall
+          loginCode={loginCode}
+          loginError={loginError}
+          isUnlocking={loginUnlocking}
+          onCodeChange={setLoginCode}
+          onSubmit={handleLoginSubmit}
+        />
+      )}
+    </>
   );
 }
 
 function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit }) {
   return (
     <main className={isUnlocking ? "login-wall-shell unlocking" : "login-wall-shell"}>
+      <div className="lock-app-preview" aria-hidden="true">
+        <div className="lock-preview-shell">
+          <div className="lock-preview-sidebar">
+            {Array.from({ length: 7 }).map((_, index) => <span key={index} />)}
+          </div>
+          <div className="lock-preview-workspace">
+            <div className="lock-preview-top" />
+            <div className="lock-preview-title" />
+            <div className="lock-preview-kpis">
+              <span /><span /><span /><span />
+            </div>
+            <div className="lock-preview-chart" />
+          </div>
+        </div>
+      </div>
       <section className="login-stage" aria-label="Secure BlueForce access">
         <div className="login-panel-left">
           <div className="login-brand-row">
@@ -2711,7 +2740,7 @@ function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit 
                 value={loginCode}
                 onChange={(event) => onCodeChange(event.target.value)}
                 type="password"
-                placeholder="Enter demo code"
+                placeholder="Access code"
                 autoComplete="off"
               />
             </div>
@@ -2721,7 +2750,6 @@ function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit 
               {isUnlocking ? "Unlocking" : "Enter platform"}
             </button>
           </form>
-          <p className="login-demo-note">Demo code: blueforce</p>
         </div>
         <div className="login-panel-right" aria-hidden="true">
           <div className="login-visual-grid" />

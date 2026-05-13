@@ -9458,193 +9458,446 @@ body::before {
 }
 
 
-/* 2026-05-09 performance/lightness pass: keep glass, reduce GPU-heavy blur and visual weight. */
-:root {
-  --bf-shadow-float: 0 18px 42px rgba(15, 23, 42, .09);
-  --bf-glass-edge: rgba(255, 255, 255, .54);
-  --bf-glass-card: rgba(255, 255, 255, .48);
-}
-
-body {
+/* 2026-05-10 clean correction: restore balanced glass, fix sidebar contrast and lock button visibility. */
+.yana-sidebar {
   background:
-    radial-gradient(circle at 16% 14%, rgba(255,255,255,.48) 0 12%, rgba(255,255,255,0) 34%),
-    radial-gradient(circle at 84% 20%, rgba(94,107,116,.16) 0 18%, rgba(94,107,116,0) 42%),
-    linear-gradient(135deg, #d6dcdf 0%, #f6f7f7 48%, #b9c1c5 100%) !important;
-}
-
-body::before {
-  opacity: .45 !important;
-  filter: blur(8px) saturate(.92) !important;
-  transform: scale(1.02) !important;
-}
-
-body::after {
-  opacity: .42 !important;
-}
-
-.yana-app-shell {
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,255,255,.12)),
-    rgba(248, 250, 252, .20) !important;
-  box-shadow:
-    0 26px 72px rgba(15,23,42,.14),
-    inset 0 1px 0 rgba(255,255,255,.74) !important;
+    linear-gradient(180deg, rgba(236, 241, 244, .58), rgba(207, 217, 223, .36)),
+    rgba(218, 226, 231, .30) !important;
+  border-right: 1px solid rgba(255,255,255,.54) !important;
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.36), 12px 0 38px rgba(15,23,42,.045) !important;
   backdrop-filter: blur(18px) saturate(1.06) !important;
   -webkit-backdrop-filter: blur(18px) saturate(1.06) !important;
 }
 
-.yana-app-shell::before {
-  inset: 18px !important;
-  opacity: .55 !important;
-  box-shadow: none !important;
-}
-
-.yana-workspace::before {
-  background: rgba(255,255,255,.08) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.34) !important;
-  backdrop-filter: blur(6px) saturate(1.02) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(1.02) !important;
-}
-
-.yana-sidebar {
-  background:
-    linear-gradient(180deg, rgba(232, 237, 240, .68), rgba(202, 211, 216, .42)),
-    rgba(221, 228, 232, .38) !important;
-  border-right: 1px solid rgba(255,255,255,.58) !important;
-  box-shadow: inset -1px 0 0 rgba(255,255,255,.42), 10px 0 28px rgba(15,23,42,.045) !important;
-  backdrop-filter: blur(14px) saturate(1.04) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(1.04) !important;
-}
-
 .yana-sidebar-logo {
-  background: rgba(255,255,255,.50) !important;
-  border: 1px solid rgba(255,255,255,.60) !important;
+  background: rgba(255,255,255,.36) !important;
+  border: 1px solid rgba(255,255,255,.50) !important;
   border-radius: 18px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.62) !important;
+}
+
+.yana-sidebar nav {
+  gap: 10px !important;
 }
 
 .yana-sidebar nav button,
 .yana-sidebar-foot {
-  background: rgba(255,255,255,.48) !important;
-  border-color: rgba(255,255,255,.62) !important;
-  color: #4b5563 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.70), 0 8px 22px rgba(15,23,42,.045) !important;
-  backdrop-filter: blur(8px) saturate(1.02) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(1.02) !important;
-}
-
-.yana-sidebar nav button.active {
-  color: #111318 !important;
-  background: rgba(255,255,255,.82) !important;
-  border-color: rgba(255,255,255,.88) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.88), 0 10px 24px rgba(15,23,42,.07) !important;
-}
-
-.yana-sidebar nav button:hover,
-.yana-sidebar-foot:hover {
-  background: rgba(255,255,255,.66) !important;
-  transform: translateY(-1px) !important;
-}
-
-.yana-card,
-.yana-kpi-card,
-.yana-path-card,
-.yana-recommendation,
-.yana-breakeven-summary,
-.method-step-card,
-.method-disclaimer-card,
-.locked-analytics-card,
-.advanced-preview-head,
-.ev-network-map-card,
-.ev-station-detail,
-.ev-network-kpis,
-.ev-station-picker,
-.proof-card,
-.stakeholder-card,
-.stakeholder-note-card,
-.yana-chart-card {
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.74), rgba(255,255,255,.50)),
-    rgba(255,255,255,.48) !important;
-  box-shadow:
-    0 16px 38px rgba(15,23,42,.07),
-    inset 0 1px 0 rgba(255,255,255,.84) !important;
-  backdrop-filter: blur(10px) saturate(1.04) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(1.04) !important;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease !important;
-}
-
-.yana-card:hover,
-.yana-kpi-card:hover,
-.yana-path-card:hover,
-.yana-recommendation:hover,
-.yana-chart-card:hover,
-.method-step-card:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 18px 46px rgba(15,23,42,.09), inset 0 1px 0 rgba(255,255,255,.88) !important;
-}
-
-.yana-topbar.compact-topbar {
-  background: linear-gradient(145deg, rgba(255,255,255,.62), rgba(255,255,255,.34)), rgba(255,255,255,.34) !important;
-  box-shadow: 0 14px 34px rgba(15,23,42,.07), inset 0 1px 0 rgba(255,255,255,.78) !important;
+  color: #4B5563 !important;
+  background: rgba(255,255,255,.42) !important;
+  border: 1px solid rgba(255,255,255,.54) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.64), 0 8px 20px rgba(15,23,42,.035) !important;
   backdrop-filter: blur(12px) saturate(1.04) !important;
   -webkit-backdrop-filter: blur(12px) saturate(1.04) !important;
 }
 
-.yana-filter-row select,
-.top-year-control,
-.top-percent-control,
-.top-mode-toggle,
-.topbar-lock-button,
-.ev-map-search,
-.ev-map-toolbar select,
-.yana-tabs button,
-.glass-tooltip,
-.connector-tip,
-.help-tip > span {
-  box-shadow: 0 8px 22px rgba(15,23,42,.055), inset 0 1px 0 rgba(255,255,255,.76) !important;
-  backdrop-filter: blur(8px) saturate(1.02) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(1.02) !important;
+.yana-sidebar nav button.active {
+  color: #111827 !important;
+  background: rgba(255,255,255,.82) !important;
+  border-color: rgba(255,255,255,.86) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 12px 26px rgba(15,23,42,.075) !important;
 }
 
-.yana-page,
-.yana-main-grid,
-.yana-kpi-grid,
-.yana-simulator-grid,
-.yana-comparison-grid,
-.ev-network-shell,
-.stakeholder-grid,
-.methodology-clean-grid {
-  content-visibility: auto;
-  contain-intrinsic-size: 900px;
+.yana-sidebar nav button:hover,
+.yana-sidebar-foot:hover {
+  color: #111827 !important;
+  background: rgba(255,255,255,.68) !important;
 }
 
-.recharts-line-dot,
-.recharts-active-dot,
-.ev-map-canvas .leaflet-tile-pane,
-.locked-analytics-card {
+.topbar-lock-button {
+  width: auto !important;
+  min-width: 82px !important;
+  padding: 0 16px !important;
+  color: #FFFFFF !important;
+  background: #111318 !important;
+  border-color: #111318 !important;
+  box-shadow: 0 14px 34px rgba(17,19,24,.18), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.topbar-lock-button svg,
+.topbar-lock-button span {
+  color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+.topbar-lock-button:hover {
+  background: #2A2D33 !important;
+  border-color: #2A2D33 !important;
+}
+
+.full-top-controls,
+.full-top-controls.new-car-active,
+.full-top-controls:not(.new-car-active) {
+  padding-right: 4px !important;
+}
+
+@media (max-width: 1320px) {
+  .topbar-lock-button {
+    justify-self: start !important;
+  }
+}
+
+/* 2026-05-12 cleanup pass: restore crisp sidebar and flexible top controls. */
+.yana-sidebar {
+  background:
+    linear-gradient(180deg, rgba(248,250,252,.94), rgba(238,242,246,.86)),
+    rgba(244,246,248,.82) !important;
+  border-right: 1px solid rgba(214,219,226,.72) !important;
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.58), 10px 0 28px rgba(15,23,42,.04) !important;
+  backdrop-filter: blur(12px) saturate(1.02) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.02) !important;
+}
+
+.yana-sidebar-logo {
+  background: rgba(255,255,255,.72) !important;
+  border: 1px solid rgba(223,228,233,.92) !important;
+  box-shadow: 0 6px 18px rgba(15,23,42,.04) !important;
+}
+
+.yana-sidebar nav {
+  gap: 12px !important;
+}
+
+.yana-sidebar nav button,
+.yana-sidebar-foot {
+  color: #4B5563 !important;
+  background: rgba(255,255,255,.88) !important;
+  border: 1px solid rgba(222,227,233,.96) !important;
+  box-shadow: 0 8px 20px rgba(15,23,42,.04), inset 0 1px 0 rgba(255,255,255,.94) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.yana-sidebar nav button svg,
+.yana-sidebar-foot svg {
+  color: #9CA3AF !important;
+  opacity: 1 !important;
+}
+
+.yana-sidebar nav button span,
+.yana-sidebar-foot span {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+.yana-sidebar nav button:hover,
+.yana-sidebar-foot:hover {
+  color: #111827 !important;
+  background: rgba(255,255,255,.96) !important;
+  transform: translateY(-1px);
+}
+
+.yana-sidebar nav button.active {
+  color: #111827 !important;
+  background: #FFFFFF !important;
+  border-color: rgba(210,215,221,1) !important;
+  box-shadow: 0 14px 30px rgba(15,23,42,.07), inset 0 1px 0 rgba(255,255,255,.96) !important;
+}
+
+.yana-sidebar nav button.active svg {
+  color: #111827 !important;
+}
+
+.yana-topbar.compact-topbar {
+  display: block !important;
+  min-height: auto !important;
+  padding-bottom: 6px !important;
+}
+
+.full-top-controls,
+.full-top-controls.new-car-active,
+.full-top-controls:not(.new-car-active) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-right: 0 !important;
+}
+
+.full-top-controls > * {
+  flex: 0 0 auto;
+}
+
+.full-top-controls select {
+  min-width: 120px;
+}
+
+.top-year-control {
+  flex: 0 1 260px;
+  min-width: 220px;
+}
+
+.top-mode-toggle {
+  display: grid !important;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(110px, 1fr);
+  min-width: 330px;
+}
+
+.top-percent-control {
+  flex: 0 1 240px;
+  min-width: 210px;
+  max-width: 240px;
+  width: auto !important;
+  justify-self: auto !important;
+}
+
+.topbar-lock-button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 88px !important;
+  margin-left: 4px !important;
+  justify-self: auto !important;
+  align-self: center !important;
+  color: #FFFFFF !important;
+  background: #111318 !important;
+  border: 1px solid rgba(17,19,24,.96) !important;
+  box-shadow: 0 12px 28px rgba(17,19,24,.14) !important;
+}
+
+.topbar-lock-button svg,
+.topbar-lock-button span {
+  color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+.topbar-lock-button:hover {
+  background: #23262C !important;
+  border-color: #23262C !important;
+}
+
+@media (max-width: 1280px) {
+  .full-top-controls,
+  .full-top-controls.new-car-active,
+  .full-top-controls:not(.new-car-active) {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .full-top-controls select,
+  .top-year-control,
+  .top-mode-toggle,
+  .top-percent-control {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .top-mode-toggle {
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .topbar-lock-button {
+    margin-left: 0 !important;
+  }
+}
+
+/* 2026-05-12 topbar width correction: keep vehicle select compact on desktop. */
+.full-top-controls > select:first-child {
+  flex: 0 0 142px !important;
+  width: 142px !important;
+  max-width: 142px !important;
+}
+
+@media (max-width: 900px) {
+  .full-top-controls > select:first-child {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* 2026-05-13 clarity pass: remove blurry navigation/control chrome. */
+.yana-sidebar {
+  background: #F6F8FA !important;
+  border-right: 1px solid #DDE3EA !important;
+  box-shadow: 8px 0 24px rgba(15, 23, 42, .035) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.yana-sidebar *,
+.yana-sidebar nav button,
+.yana-sidebar-foot {
   filter: none !important;
+  text-shadow: none !important;
 }
 
-.app-locked-behind {
-  filter: blur(4px) saturate(.94) brightness(.96) !important;
-  transform: scale(.992) !important;
+.yana-sidebar-logo {
+  background: #FFFFFF !important;
+  border: 1px solid #E4E9EF !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, .035) !important;
 }
 
-.login-wall-shell {
-  backdrop-filter: blur(10px) saturate(.96) brightness(.97) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(.96) brightness(.97) !important;
+.yana-sidebar nav button,
+.yana-sidebar-foot {
+  color: #374151 !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E1E7ED !important;
+  box-shadow: 0 6px 16px rgba(15,23,42,.035) !important;
+  font-weight: 780 !important;
 }
 
-.login-stage,
-.login-panel-left,
-.login-panel-right {
-  box-shadow: 0 22px 68px rgba(15,23,42,.14), inset 0 1px 0 rgba(255,255,255,.78) !important;
-  backdrop-filter: blur(14px) saturate(1.04) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(1.04) !important;
+.yana-sidebar nav button svg,
+.yana-sidebar-foot svg {
+  color: #6B7280 !important;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .team-face-orb {
-    animation-duration: 8s !important;
+.yana-sidebar nav button.active {
+  color: #111827 !important;
+  background: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 12px 24px rgba(15,23,42,.075) !important;
+}
+
+.yana-sidebar nav button.active svg {
+  color: #111827 !important;
+}
+
+.yana-topbar.compact-topbar {
+  display: block !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  padding: 16px 0 8px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.full-top-controls,
+.full-top-controls.new-car-active,
+.full-top-controls:not(.new-car-active) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  border: 1px solid rgba(226,232,240,.95) !important;
+  border-radius: 24px !important;
+  background: rgba(255,255,255,.78) !important;
+  box-shadow: 0 14px 34px rgba(15,23,42,.055), inset 0 1px 0 rgba(255,255,255,.95) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.full-top-controls > select:first-child,
+.yana-filter-row select {
+  flex: 0 0 132px !important;
+  width: 132px !important;
+  max-width: 132px !important;
+  min-width: 132px !important;
+  height: 44px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E5EAF0 !important;
+  box-shadow: 0 6px 16px rgba(15,23,42,.035) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.top-year-control {
+  flex: 0 0 292px !important;
+  min-width: 292px !important;
+  max-width: 292px !important;
+}
+
+.top-mode-toggle {
+  flex: 0 0 390px !important;
+  min-width: 390px !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  border: 1px solid #E5EAF0 !important;
+  border-radius: 20px !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 6px 16px rgba(15,23,42,.035) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.top-mode-toggle button {
+  height: 42px !important;
+  border-radius: 16px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.top-mode-toggle button.active {
+  color: #FFFFFF !important;
+  background: #111318 !important;
+  box-shadow: 0 10px 22px rgba(17,19,24,.14) !important;
+}
+
+.top-percent-control {
+  flex: 0 0 230px !important;
+  width: 230px !important;
+  min-width: 230px !important;
+  max-width: 230px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E5EAF0 !important;
+  box-shadow: 0 6px 16px rgba(15,23,42,.035) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.topbar-lock-button {
+  flex: 0 0 84px !important;
+  width: 84px !important;
+  min-width: 84px !important;
+  height: 44px !important;
+  margin-left: 0 !important;
+  border-radius: 16px !important;
+  color: #FFFFFF !important;
+  background: #111318 !important;
+  border: 1px solid #111318 !important;
+  box-shadow: 0 10px 22px rgba(17,19,24,.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.topbar-lock-button svg,
+.topbar-lock-button span {
+  color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 1120px) {
+  .full-top-controls,
+  .full-top-controls.new-car-active,
+  .full-top-controls:not(.new-car-active) {
+    width: 100% !important;
+  }
+
+  .top-year-control,
+  .top-mode-toggle,
+  .top-percent-control {
+    flex: 1 1 260px !important;
+    min-width: 220px !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .full-top-controls > select:first-child,
+  .yana-filter-row select,
+  .top-year-control,
+  .top-mode-toggle,
+  .top-percent-control {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
   }
 }

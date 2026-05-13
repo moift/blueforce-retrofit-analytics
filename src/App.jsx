@@ -22,7 +22,6 @@ import {
   BarChart as BarChartIcon,
   Car,
   CircleDollarSign,
-  ClipboardList,
   Gauge,
   Home,
   Info,
@@ -162,7 +161,6 @@ const navItems = [
   { id: "breakeven", label: "Breakeven", icon: TrendingUp },
   { id: "carbon", label: "Carbon Impact", icon: Leaf },
   { id: "ev-network", label: "EV Network", icon: MapPin },
-  { id: "stakeholders", label: "Stakeholder View", icon: ClipboardList },
   { id: "methodology", label: "Methodology", icon: FileText },
 ];
 
@@ -1528,7 +1526,7 @@ function usePremiumInteractionFeedback(enabled = true) {
 
 function useLiquidPointerEffect() {
   useEffect(() => {
-    const selector = ".yana-card, .yana-kpi-card, .yana-path-card, .stakeholder-card, .locked-analytics-card, .method-step-card, .yana-sidebar button";
+    const selector = ".yana-card, .yana-kpi-card, .yana-path-card, .locked-analytics-card, .method-step-card, .yana-sidebar button";
     const handlePointerMove = (event) => {
       const target = event.target?.closest?.(selector);
       if (!target) return;
@@ -2517,65 +2515,9 @@ function App() {
     );
   };
 
-  const renderStakeholders = () => (
-    <>
-      <PageHeader title="Stakeholder view" kicker="Two clean lenses for the same retrofit decision." />
-      <section className="stakeholder-grid">
-        <article className="yana-card stakeholder-card customer-lens">
-          <span>Customer lens</span>
-          <h3>Will this lower fleet cost?</h3>
-          <div className="stakeholder-metric"><small>{vehicle} 10-year savings</small><strong>{currency(activeSavingsVsIce)}</strong></div>
-          <ul>
-            <li>Lowest lifecycle pathway: <b>{best?.type || "Pending"}</b></li>
-            <li>Breakeven signal: <b>{breakevenText}</b></li>
-            <li>Operating story: lower fuel exposure and simplified maintenance assumptions.</li>
-          </ul>
-        </article>
-        <article className="yana-card stakeholder-card funding-lens">
-          <span>Government / funding lens</span>
-          <h3>Does this justify support?</h3>
-          <div className="stakeholder-metric"><small>Lifecycle CO2e avoided</small><strong>{tonnes(emissionsAvoidedVsIce)}</strong></div>
-          <ul>
-            <li>Carbon impact is tracked separately from lifecycle cost.</li>
-            <li>Manufacturing emissions are included from Year 0.</li>
-            <li>Funding-ready gap: confirm credit ownership and battery assumptions.</li>
-          </ul>
-        </article>
-      </section>
-      <section className="stakeholder-proof-grid">
-        <article className="yana-card proof-card"><CircleDollarSign size={18} /><span>Financial proof</span><strong>{currency(retrofitTunedRow?.tunedCost ?? 0)}</strong><small>Retrofit lifecycle cost at Year {horizon}</small></article>
-        <article className="yana-card proof-card"><Leaf size={18} /><span>Climate proof</span><strong>{tonnes(lifecycleEmissionsAt(retrofitTunedRow, horizon))}</strong><small>Retrofit lifecycle emissions</small></article>
-        <article className="yana-card proof-card"><MapPin size={18} /><span>Infrastructure proof</span><strong className="proof-inline-value"><b>{evNetworkStats.cities}</b><em>BC cities</em></strong><small>Representative charging network view</small></article>
-      </section>
-      <section className="advanced-analytics-preview" aria-label="Advanced analytics preview">
-        <div className="advanced-preview-head">
-          <span>Future capability</span>
-          <h3>Advanced analytics</h3>
-          <p>Future modules after validation.</p>
-        </div>
-        {[
-          { title: "Customer pack", copy: "Procurement-ready summary." },
-          { title: "Funding view", copy: "Grant evidence layer." },
-          { title: "Scale model", copy: "Investor rollout cases." },
-        ].map((item) => (
-          <article key={item.title} className="locked-analytics-card" aria-disabled="true">
-            <LockKeyhole size={17} />
-            <span>Locked</span>
-            <strong>{item.title}</strong>
-            <small>{item.copy}</small>
-          </article>
-        ))}
-      </section>
-      <article className="yana-card stakeholder-note-card">
-        <span>How to use this page</span>
-        <p>Use the customer lens for fleet purchase decisions. Use the funding lens for emissions reduction, grant support, and public-sector value. The locked modules show where the platform can expand next.</p>
-      </article>
-    </>
-  );
-
   const renderMethodology = () => (
     <>
-      <PageHeader title="Methodology" kicker="Plain-language formulas behind the dashboard." />
+      <PageHeader title="Methodology" kicker="Assumptions and formulas in one clean place." />
       <section className="method-flow-strip">
         {[
           ["1", "Inputs", "Vehicle price, km/year, fuel/electricity, maintenance, emissions"],
@@ -2612,7 +2554,6 @@ function App() {
     breakeven: renderBreakeven,
     carbon: renderCarbon,
     "ev-network": renderEVNetwork,
-    stakeholders: renderStakeholders,
     methodology: renderMethodology,
   };
 
@@ -2646,13 +2587,13 @@ function App() {
         <div className="yana-sidebar-logo"><img src="/assets/logos/blueforce-logo.png" alt="BlueForce Energy" /></div>
         <nav>
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" className={activeView === id ? "active" : ""} onClick={() => setActiveView(id)} title={label}>
+            <button key={id} type="button" className={activeView === id ? "active" : ""} onClick={() => setActiveView(id)}>
               <Icon size={18} />
               <span>{label}</span>
             </button>
           ))}
         </nav>
-        <button className="yana-sidebar-foot" type="button" onClick={() => setDetailOpen("team")} title="View project team">
+        <button className="yana-sidebar-foot" type="button" onClick={() => setDetailOpen("team")}>
           <Users size={18} />
           <span>Team</span>
         </button>

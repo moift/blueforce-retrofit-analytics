@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import * as THREE from "three";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -21,8 +22,10 @@ import {
 import {
   BarChart as BarChartIcon,
   Car,
+  Database,
   CircleDollarSign,
   Gauge,
+  GitBranch,
   Home,
   Info,
   Leaf,
@@ -32,12 +35,17 @@ import {
   LogOut,
   Mail,
   MapPin,
+  Monitor,
   MousePointerClick,
   Phone,
   RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Smartphone,
+  Tablet,
+  Volume2,
+  VolumeX,
   Table2,
   TrendingUp,
   Users,
@@ -45,6 +53,10 @@ import {
   Zap,
   Search,
   FileText,
+  SendHorizontal,
+  MessageCircle,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const SCENARIOS = {
@@ -160,8 +172,93 @@ const navItems = [
   { id: "scenario", label: "Scenario Analysis", icon: BarChartIcon },
   { id: "breakeven", label: "Breakeven", icon: TrendingUp },
   { id: "carbon", label: "Carbon Impact", icon: Leaf },
+  { id: "policy", label: "EV Policy", icon: ShieldCheck },
   { id: "ev-network", label: "EV Network", icon: MapPin },
+  { id: "data-map", label: "Data Map", icon: GitBranch },
   { id: "methodology", label: "Methodology", icon: FileText },
+];
+
+const EV_POLICY_LINKS = [
+  {
+    jurisdiction: "BC",
+    title: "Go Electric BC rebates and programs",
+    summary: "Provincial hub for EV rebates, charger support, fleet programs, Indigenous programs, and Go Electric resources.",
+    whyItMatters: "Best source for BC customer-facing rebate options and program eligibility checks.",
+    url: "https://goelectricbc.gov.bc.ca/rebates-and-programs/",
+    tag: "Rebates",
+  },
+  {
+    jurisdiction: "BC",
+    title: "Go Electric home and workplace charging rebates",
+    summary: "Official BC page for Level 2 charger rebates for homes, multi-unit buildings, workplaces, and Indigenous communities.",
+    whyItMatters: "Useful when explaining charging readiness and infrastructure support to fleet customers.",
+    url: "https://goelectricbc.gov.bc.ca/rebates-and-programs/for-individuals/save-on-home-and-workplace-charging/",
+    tag: "Charging",
+  },
+  {
+    jurisdiction: "BC",
+    title: "BC Low Carbon Fuel Standard",
+    summary: "Official BC LCFS page covering low-carbon fuel credits, credit market information, bulletins, and requirements.",
+    whyItMatters: "Relevant for the app’s carbon-credit discussion, but credit ownership must be validated with the client.",
+    url: "https://www2.gov.bc.ca/gov/content?id=7A5A56783287434B85C4B33656B35627",
+    tag: "Credits",
+  },
+  {
+    jurisdiction: "Canada",
+    title: "Federal zero-emission vehicle incentives",
+    summary: "Canada.ca overview of federal ZEV incentives, including light-duty affordability support and medium/heavy-duty programs.",
+    whyItMatters: "Useful for checking whether a vehicle pathway may qualify for federal purchase support.",
+    url: "https://www.canada.ca/en/services/transport/zero-emission-vehicles/zero-emission-vehicles-incentives.html",
+    tag: "Federal",
+  },
+  {
+    jurisdiction: "Canada",
+    title: "iZEV program status reference",
+    summary: "Transport Canada’s light-duty iZEV page notes that the previous iZEV program has ended and is kept for reference.",
+    whyItMatters: "Prevents outdated incentive assumptions from entering the retrofit business case.",
+    url: "https://tc.canada.ca/en/road-transportation/innovative-technologies/zero-emission-vehicles/light-duty-zero-emission-vehicles",
+    tag: "Status",
+  },
+  {
+    jurisdiction: "Canada",
+    title: "Zero-emission vehicles information hub",
+    summary: "Federal information hub for ZEV incentives, infrastructure funding, commercial vehicles, policy, and regulations.",
+    whyItMatters: "Good starting point for federal policy context and updates useful to customers and funders.",
+    url: "https://www.canada.ca/en/services/transport/zero-emission-vehicles.html",
+    tag: "Policy",
+  },
+];
+
+const DEVICE_PREVIEW_MODES = [
+  { id: "desktop", label: "Desktop", icon: Monitor },
+  { id: "tablet", label: "Tablet", icon: Tablet },
+  { id: "phone", label: "Phone", icon: Smartphone },
+];
+
+const VISUAL_THEME_OPTIONS = [
+  { id: "light", label: "Day", icon: Sun },
+  { id: "night", label: "Night", icon: Moon },
+];
+
+const DATA_MAP_NODES = [
+  { id: "blueforce", label: "BlueForce inputs", shortLabel: "BlueForce", type: "source", category: "Client", summary: "Retrofit price ranges, service assumptions, prototype platform notes, and sponsor questions.", feeds: ["Capital cost", "Retrofit assumptions", "Validation list"] },
+  { id: "full-dataset", label: "Full Dataset", shortLabel: "Full dataset", type: "source", category: "Team dataset", summary: "Combined vehicle table used by the Python model and dashboard outputs.", feeds: ["Vehicle rows", "Fuel consumption", "Maintenance", "Manufacturing emissions"] },
+  { id: "nrcan", label: "NRCan fuel ratings", shortLabel: "NRCan", type: "source", category: "Public data", summary: "Fuel and energy consumption reference data for comparable ICE, diesel, and EV pathways.", feeds: ["L/100km", "kWh/100km", "Fuel cost logic"] },
+  { id: "bc-hydro", label: "BC Hydro rates", shortLabel: "BC Hydro", type: "source", category: "Utility data", summary: "Electricity rate assumptions used to estimate EV and retrofit charging cost.", feeds: ["$/kWh", "Electricity multiplier", "Operating cost"] },
+  { id: "fuel-history", label: "Fuel price history", shortLabel: "Fuel prices", type: "source", category: "Market data", summary: "Gasoline and diesel price assumptions used for base case and sensitivity analysis.", feeds: ["$/L", "Fuel multiplier", "Scenario analysis"] },
+  { id: "maintenance", label: "Maintenance benchmarks", shortLabel: "Maintenance", type: "source", category: "Methodology", summary: "Cost-per-kilometre maintenance estimates for ICE, diesel, EV, and retrofit pathways.", feeds: ["CAD/km", "Annual maintenance", "Lifecycle cost"] },
+  { id: "emissions", label: "Emissions factors", shortLabel: "Emissions", type: "source", category: "Environmental", summary: "Operating and manufacturing emissions assumptions used for lifecycle CO2e calculations.", feeds: ["kg CO2e/L", "kg CO2e/kWh", "Manufacturing CO2e"] },
+  { id: "lcfs", label: "Carbon credit assumptions", shortLabel: "Carbon credits", type: "source", category: "Funding", summary: "BC credit value assumptions shown separately from lifecycle cost until ownership is validated.", feeds: ["Credit value", "kWh use", "Funding signal"] },
+  { id: "ev-network-source", label: "BC charging network", shortLabel: "Chargers", type: "source", category: "Infrastructure", summary: "EV station coverage and connector data used for the infrastructure discussion view.", feeds: ["Station count", "Connectors", "Fleet readiness"] },
+  { id: "python", label: "Python forecasting model", type: "process", category: "Model", summary: "Transforms source data into cost, emissions, breakeven, scenario, and carbon outputs.", feeds: ["3/5/10 year forecast", "Scenario tables", "Breakeven outputs"] },
+  { id: "dashboard", label: "Decision platform", type: "output", category: "App", summary: "Client-facing interface for exploring vehicle pathways, assumptions, infrastructure, and recommendations.", feeds: ["Executive KPIs", "Charts", "Methodology", "Client story"] },
+];
+
+const DATA_MAP_LAYERS = [
+  { id: "inputs", label: "Data inputs", angle: -110 },
+  { id: "model", label: "Forecast model", angle: -20 },
+  { id: "outputs", label: "Client outputs", angle: 70 },
+  { id: "validation", label: "Validation", angle: 160 },
 ];
 
 const GREATER_VANCOUVER_STATIONS = [
@@ -573,10 +670,67 @@ const GREATER_VANCOUVER_STATIONS = [
 ];
 
 const EV_NETWORK_SOURCE_NOTE = "BC-wide infrastructure planning view. Locations and charger counts are representative planning clusters and should be validated against NRCan or Open Charge Map before final client recommendations. Real-time charger availability is not included.";
+const FEDERAL_CFR_REFERENCE_PRICE_CAD_PER_TONNE = 350;
+const FEDERAL_CFR_NOTE = "Federal CFR credit value is market-based. This app uses CAD $350/t CO2e only as an unconfirmed sensitivity from the client discussion, not as a guaranteed credit price.";
 const PROJECT_TEAM = [
-  { name: "Saad", role: "App development and data analyst", tone: "male" },
-  { name: "Ross", role: "Data modelling and research analyst", tone: "male-alt" },
-  { name: "Ocean", role: "QA and data analyst", tone: "female" },
+  {
+    name: "Saad",
+    role: "App Development & Data Analyst",
+    focus: "Product direction, interface design, model integration, and data workflow.",
+    tone: "male",
+    photo: "/assets/saad-portrait-source.jpeg",
+    photoPosition: "center 22%",
+    photoScale: 1.08,
+  },
+  {
+    name: "Ross",
+    role: "Data Modelling & Research Analyst",
+    focus: "Forecast logic, scenario design, and research validation.",
+    tone: "male-alt",
+    photo: "/assets/ross-portrait-source.jpeg",
+    photoPosition: "center 24%",
+    photoScale: 1.12,
+  },
+  {
+    name: "Ocean",
+    role: "QA & Data Analyst",
+    focus: "Quality assurance, dataset review, and documentation control.",
+    tone: "female",
+    photo: "/assets/ocean-portrait-source.jpeg",
+    photoPosition: "center 20%",
+    photoScale: 1.1,
+  },
+];
+
+const PROJECT_NETWORK_GROUPS = [
+  {
+    id: "students",
+    title: "Student team",
+    members: PROJECT_TEAM,
+  },
+  {
+    id: "blueforce",
+    title: "BlueForce support",
+    compact: true,
+    members: [
+      {
+        name: "Nataliia Vladyka",
+      },
+    ],
+  },
+  {
+    id: "bcit",
+    title: "BCIT support",
+    compact: true,
+    members: [
+      {
+        name: "Alan Stewart",
+      },
+      {
+        name: "Clay Howey",
+      },
+    ],
+  },
 ];
 
 const explanations = {
@@ -970,6 +1124,31 @@ function LayerCard({ icon: Icon, eyebrow, title, value, copy, onClick }) {
   );
 }
 
+function TeamAvatar({ member }) {
+  if (member.photo) {
+    return (
+      <div className="team-face-orb has-photo" aria-hidden="true">
+        <img
+          src={member.photo}
+          alt=""
+          style={{
+            objectPosition: member.photoPosition || "center 26%",
+            transform: `scale(${member.photoScale || 1})`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="team-face-orb" aria-hidden="true">
+      <span className="face-hair" />
+      <span className="face-head"><i /><i /></span>
+      <span className="face-smile" />
+    </div>
+  );
+}
+
 function LayerDrawer({ detail, onClose }) {
   useEffect(() => {
     if (!detail) return undefined;
@@ -984,24 +1163,55 @@ function LayerDrawer({ detail, onClose }) {
 
   return createPortal(
     <div className="layer-backdrop" role="presentation" onClick={onClose}>
-      <aside className="layer-drawer" role="dialog" aria-modal="true" aria-label={detail.title} onClick={(event) => event.stopPropagation()}>
+      <aside className={detail.networkGroups ? "layer-drawer team-drawer" : "layer-drawer"} role="dialog" aria-modal="true" aria-label={detail.title} onClick={(event) => event.stopPropagation()}>
         <button className="drawer-close layer-close" type="button" onClick={onClose} aria-label="Close detail layer">
           <X size={18} />
         </button>
         <p className="eyebrow">Project details</p>
         <h2>{detail.title}</h2>
         {detail.body && <p>{detail.body}</p>}
-        {detail.team && (
+        {detail.networkGroups && (
+          <div className="team-network-sections">
+            {detail.networkGroups.map((group) => (
+              <section key={group.id} className={`team-network-section ${group.compact ? "compact" : ""}`}>
+                <span>{group.title}</span>
+                {group.compact ? (
+                  <div className="team-support-grid">
+                    {group.members.map((member) => (
+                      <article key={`${group.id}-${member.name}`} className="team-support-card">
+                        <strong>{member.name}</strong>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="team-showcase-grid">
+                    {group.members.map((member) => (
+                      <article key={`${group.id}-${member.name}`} className={`team-avatar-card tone-${member.tone || "neutral"}`}>
+                        <TeamAvatar member={member} />
+                        <strong>{member.name}</strong>
+                        <small>{member.role}</small>
+                        {member.focus && <p>{member.focus}</p>}
+                        <div className="team-contact-row" aria-label={`${member.name} contact placeholders`}>
+                          <span title="LinkedIn placeholder"><Linkedin size={13} /></span>
+                          <span title="Email placeholder"><Mail size={13} /></span>
+                          <span title="Phone placeholder"><Phone size={13} /></span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+        {detail.team && !detail.networkGroups && (
           <div className="team-showcase-grid">
             {detail.team.map((member) => (
               <article key={member.name} className={`team-avatar-card tone-${member.tone}`}>
-                <div className="team-face-orb" aria-hidden="true">
-                  <span className="face-hair" />
-                  <span className="face-head"><i /><i /></span>
-                  <span className="face-smile" />
-                </div>
+                <TeamAvatar member={member} />
                 <strong>{member.name}</strong>
                 <small>{member.role}</small>
+                {member.focus && <p>{member.focus}</p>}
                 <div className="team-contact-row" aria-label={`${member.name} contact placeholders`}>
                   <span title="LinkedIn placeholder"><Linkedin size={13} /></span>
                   <span title="Email placeholder"><Mail size={13} /></span>
@@ -1613,17 +1823,28 @@ function App() {
   const [scenario, setScenario] = useState("base");
   const [horizon, setHorizon] = useState(10);
   const [ownershipMode, setOwnershipMode] = useState("service");
-  const [newCarPercent, setNewCarPercent] = useState(100);
+  const [newCarPercent, setNewCarPercent] = useState(50);
   const [selectedType, setSelectedType] = useState("Retrofit");
   const [stationSearch, setStationSearch] = useState("");
   const [stationCity, setStationCity] = useState("All");
   const [selectedStation, setSelectedStation] = useState(GREATER_VANCOUVER_STATIONS[0]);
+  const [selectedDataNode, setSelectedDataNode] = useState(DATA_MAP_NODES[0]);
+  const [dataMapTilt, setDataMapTilt] = useState(0);
+  const [dataMapDepth, setDataMapDepth] = useState(0);
+  const [dataMapDrift, setDataMapDrift] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(() => window.localStorage.getItem("blueforce-demo-unlocked") === "true");
+  const [soundOn, setSoundOn] = useState(() => window.localStorage.getItem("blueforce-demo-sound") !== "off");
+  const [dataMode, setDataMode] = useState("snapshot");
+  const [devicePreview, setDevicePreview] = useState("desktop");
+  const [visualTheme, setVisualTheme] = useState(() => (localStorage.getItem("blueforce-visual-theme") === "night" ? "night" : "light"));
   const [loginUnlocking, setLoginUnlocking] = useState(false);
   const [loginCode, setLoginCode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [focusMode, setFocusMode] = useState("cost");
   const [detailOpen, setDetailOpen] = useState(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantQuestion, setAssistantQuestion] = useState("");
+  const [assistantMessages, setAssistantMessages] = useState([]);
   const [tunerIndexByScenario, setTunerIndexByScenario] = useState(DEFAULT_TUNER_INDEX);
   const [scenarioTab, setScenarioTab] = useState("km");
   const [simulatorInputs, setSimulatorInputs] = useState({
@@ -1634,9 +1855,114 @@ function App() {
     maintenanceInflation: 0,
     horizon: 10,
   });
+  const pageCarouselRef = useRef(null);
+  const pagePanelRefs = useRef({});
+  const activeViewRef = useRef("overview");
+  const carouselNavLockRef = useRef(false);
+  const carouselNavReleaseRef = useRef(null);
+  const carouselWheelReleaseRef = useRef(null);
 
-  usePremiumInteractionFeedback(isUnlocked);
+  usePremiumInteractionFeedback(isUnlocked && soundOn);
   useLiquidPointerEffect();
+
+  useEffect(() => {
+    activeViewRef.current = activeView;
+  }, [activeView]);
+
+  const releaseCarouselNavLock = React.useCallback((delay = 0) => {
+    window.clearTimeout(carouselNavReleaseRef.current);
+    if (!delay) {
+      carouselNavLockRef.current = false;
+      return;
+    }
+    carouselNavReleaseRef.current = window.setTimeout(() => {
+      carouselNavLockRef.current = false;
+    }, delay);
+  }, []);
+
+  const scrollToView = React.useCallback((viewId, behavior = "smooth") => {
+    const carousel = pageCarouselRef.current;
+    const panel = pagePanelRefs.current[viewId];
+    if (!carousel || !panel) return;
+    carouselNavLockRef.current = behavior === "smooth";
+    releaseCarouselNavLock(behavior === "smooth" ? 420 : 0);
+    carousel.scrollTo({ left: panel.offsetLeft, behavior });
+  }, [releaseCarouselNavLock]);
+
+  const goToView = React.useCallback((viewId, behavior = "smooth") => {
+    setActiveView(viewId);
+    window.requestAnimationFrame(() => scrollToView(viewId, behavior));
+  }, [scrollToView]);
+
+  const getNearestCarouselView = React.useCallback(() => {
+    const carousel = pageCarouselRef.current;
+    if (!carousel) return null;
+    const panels = navItems
+      .map((item) => [item.id, pagePanelRefs.current[item.id]])
+      .filter((entry) => entry[1]);
+    if (!panels.length) return null;
+    const center = carousel.scrollLeft + carousel.clientWidth / 2;
+    let nearestId = panels[0][0];
+    let nearestDistance = Infinity;
+    panels.forEach(([id, node]) => {
+      const nodeCenter = node.offsetLeft + node.offsetWidth / 2;
+      const distance = Math.abs(nodeCenter - center);
+      if (distance < nearestDistance) {
+        nearestId = id;
+        nearestDistance = distance;
+      }
+    });
+    return nearestId;
+  }, []);
+
+  const handleCarouselWheel = React.useCallback((event) => {
+    const carousel = pageCarouselRef.current;
+    if (!carousel) return;
+    const horizontalDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) * 1.15
+      ? event.deltaX
+      : event.shiftKey
+        ? event.deltaY
+        : 0;
+    if (!horizontalDelta) return;
+    event.preventDefault();
+    carousel.style.scrollSnapType = "none";
+    carousel.style.scrollBehavior = "auto";
+    carousel.scrollLeft += horizontalDelta;
+    window.clearTimeout(carouselWheelReleaseRef.current);
+    carouselWheelReleaseRef.current = window.setTimeout(() => {
+      const nearestView = getNearestCarouselView();
+      carousel.style.scrollSnapType = "";
+      carousel.style.scrollBehavior = "";
+      if (nearestView) {
+        setActiveView(nearestView);
+        scrollToView(nearestView, "smooth");
+      }
+    }, 110);
+  }, [getNearestCarouselView, scrollToView]);
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(carouselNavReleaseRef.current);
+      window.clearTimeout(carouselWheelReleaseRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isUnlocked) return undefined;
+    const frame = window.requestAnimationFrame(() => scrollToView(activeViewRef.current, "auto"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [devicePreview, isUnlocked, scrollToView]);
+
+  const syncActiveViewFromCarousel = React.useCallback(() => {
+    const carousel = pageCarouselRef.current;
+    if (!carousel || carouselNavLockRef.current) return;
+    const nearestId = getNearestCarouselView();
+    if (!nearestId) return;
+    if (nearestId !== activeViewRef.current) {
+      setActiveView(nearestId);
+    }
+  }, [getNearestCarouselView]);
 
   const today = useMemo(
     () =>
@@ -1922,6 +2248,8 @@ function App() {
   const storyCarbonValue = (data?.Carbon_Credit_Revenue || []).find(
     (row) => row.model === `${vehicle} Retrofit` && Number(row.year) === horizon && Number(row.km_per_year) === storyCarbonKm,
   )?.cumulative_credit_value_cad || 0;
+  const federalCfrPotentialValue = Math.max(0, emissionsAvoidedVsIce) * FEDERAL_CFR_REFERENCE_PRICE_CAD_PER_TONNE;
+  const combinedCreditPotentialValue = Number(storyCarbonValue || 0) + federalCfrPotentialValue;
   const dynamicCostBreakevenYear = firstYearWhere(retrofit, iceRow, costAt);
   const dynamicEmissionsBreakevenYear = firstYearWhere(retrofit, iceRow, lifecycleEmissionsAt);
   const breakevenText = formatBreakevenYear(dynamicCostBreakevenYear);
@@ -2052,17 +2380,17 @@ function App() {
       body: "BC credits are not literally paid per kW. The model uses eligible EV electricity use in kWh, converts it to MJ, applies the BC LCFS formula, then multiplies credits by the fixed base price of $258.74 per credit.",
       takeaway: carbonCreditMethodNote || "The carbon-credit section keeps the credit price fixed and varies annual kilometres, so usage drives the credit value.",
       facts: [
-        { label: "Fixed credit price", value: "$258.74/credit" },
-        { label: "Credit value", value: `${Number(retrofitCarbonCreditRow?.credit_value_cents_per_kwh_base_price || 0).toFixed(1)} cents/kWh` },
+        { label: "BC LCFS price", value: "$258.74/credit" },
+        { label: "Federal CFR sensitivity", value: `$${FEDERAL_CFR_REFERENCE_PRICE_CAD_PER_TONNE}/t CO2e` },
         { label: "Current km case", value: `${storyCarbonKm.toLocaleString()} km/year` },
-        { label: "Scope", value: "Credit revenue only" },
+        { label: "Scope", value: "Credit potential only" },
       ],
     },
     team: {
       title: "Team",
       body: "",
       takeaway: "",
-      team: PROJECT_TEAM,
+      networkGroups: PROJECT_NETWORK_GROUPS,
       facts: [],
     }
   };
@@ -2079,12 +2407,12 @@ function App() {
 
   const updateScenario = (value) => {
     setScenario(value);
-    setActiveView(value === "base" ? "overview" : "scenario");
+    goToView(value === "base" ? "overview" : "scenario");
   };
 
   const updateTunerIndex = (value) => {
     setTunerIndexByScenario((current) => ({ ...current, [scenario]: value }));
-    setActiveView("scenario");
+    goToView("scenario");
   };
 
   const annualKm = Number(breakevenVsIce?.annual_km || 20000);
@@ -2101,15 +2429,22 @@ function App() {
     });
     return item;
   });
-  const comparisonCards = rows.map((row) => ({
-    ...row,
-    annualMaintenance: annualMaintenanceFor(row),
-    bestUse: row.type === "Retrofit"
-      ? "Lower capital transition"
-      : row.type === "OEM EV"
-        ? "New EV replacement"
-        : "Status quo benchmark",
-  }));
+  const comparisonCards = rows.map((row) => {
+    const annualMaintenance = annualMaintenanceFor(row);
+    const savingsVsIce = iceRow ? costAt(iceRow, horizon) - costAt(row, horizon) : 0;
+    const maintenanceInput = inputForModel(row.model);
+    return {
+      ...row,
+      annualMaintenance,
+      savingsVsIce,
+      maintenancePerKm: Number(maintenanceInput.maintenance_per_km || 0),
+      bestUse: row.type === "Retrofit"
+        ? "Lower capital transition"
+        : row.type === "OEM EV"
+          ? "New EV replacement"
+          : "Status quo benchmark",
+    };
+  });
   const breakevenDisplay = breakevenText;
   const scenarioTabs = [
     { id: "km", label: "Annual km sensitivity", insight: "Driving more kilometres generally strengthens the electric retrofit operating case." },
@@ -2204,6 +2539,10 @@ function App() {
   const simulatedRetrofit = simulatedRows.find((row) => row.type === "Retrofit") || simulatedRows[0];
   const simulatedIce = simulatedRows.find((row) => row.type === "ICE") || simulatedRows.find((row) => row.type === "Diesel");
   const simulatedSavings = Number(simulatedIce?.lifecycleCost || 0) - Number(simulatedRetrofit?.lifecycleCost || 0);
+  const simulatedGas = simulatedRows.find((row) => row.type === "ICE");
+  const simulatedDiesel = simulatedRows.find((row) => row.type === "Diesel");
+  const annualFuelSavingsVsGas = simulatedGas && simulatedRetrofit ? Math.max(0, Number(simulatedGas.annualEnergy || 0) - Number(simulatedRetrofit.annualEnergy || 0)) : 0;
+  const annualFuelSavingsVsDiesel = simulatedDiesel && simulatedRetrofit ? Math.max(0, Number(simulatedDiesel.annualEnergy || 0) - Number(simulatedRetrofit.annualEnergy || 0)) : 0;
   const simulatedTimeline = Array.from({ length: Math.floor(simulatorInputs.horizon) + 1 }, (_, year) => {
     const item = { year: `${year}Y` };
     simulatedRows.forEach((row) => {
@@ -2241,16 +2580,139 @@ function App() {
     </div>
   );
 
+  const assistantStarterPrompts = [
+    "Which pathway wins right now?",
+    "Explain the carbon credits",
+    "Why is maintenance not zero?",
+    "What should we tell the client?",
+  ];
+
+  const buildAssistantAnswer = (question) => {
+    const lower = question.toLowerCase();
+    const currentBest = best?.type || "the current lowest-cost pathway";
+    const retrofitCost = currency(retrofitTunedRow?.tunedCost ?? costAt(retrofit, horizon));
+    const iceCost = currency(iceTunedRow?.tunedCost ?? costAt(iceRow, horizon));
+    const savings = currency(activeSavingsVsIce);
+    const emissions = tonnes(emissionsAvoidedVsIce);
+    const annualFuelGas = annual(annualFuelSavingsVsGas);
+    const annualFuelDiesel = annual(annualFuelSavingsVsDiesel);
+    const currentPage = selectedPage.label;
+
+    if (lower.includes("team") || lower.includes("who built") || lower.includes("who made")) {
+      return "Student team: Saad, Ross, and Ocean. BlueForce support: Nataliia Vladyka. BCIT support: Alan Stewart and Clay Howey.";
+    }
+
+    if (lower.includes("what am i seeing") || lower.includes("current page") || lower.includes("this page")) {
+      return `${currentPage} is showing ${vehicle} under ${activeOwnership.label} mode at Year ${horizon}. The current cost winner is ${currentBest}.`;
+    }
+
+    if (lower.includes("carbon") || lower.includes("credit") || lower.includes("cfr") || lower.includes("lcfs")) {
+      return `BC LCFS potential is ${currency(storyCarbonValue)} at ${storyCarbonKm.toLocaleString()} km/year. Federal CFR sensitivity is ${currency(federalCfrPotentialValue)} at CAD $350/t CO2e. Combined potential is ${currency(combinedCreditPotentialValue)}.`;
+    }
+
+    if (lower.includes("fuel") || lower.includes("gas") || lower.includes("diesel")) {
+      return `At ${simulatorInputs.annualKm.toLocaleString()} km/year, retrofit saves ${annualFuelGas} versus gasoline ICE${simulatedDiesel ? ` and ${annualFuelDiesel} versus diesel` : ""}. The app compares annual ICE fuel cost against retrofit electricity cost under the current multipliers.`;
+    }
+
+    if (lower.includes("maintenance") || lower.includes("service")) {
+      return `Maintenance uses a simple benchmark: annual km × maintenance cost per km. In the simulator, ${vehicle} retrofit maintenance is ${annual(simulatedRetrofit?.annualMaintenance || 0)} at ${simulatorInputs.annualKm.toLocaleString()} km/year. EV maintenance is lower than ICE, not zero.`;
+    }
+
+    if (lower.includes("breakeven") || lower.includes("payback")) {
+      return `Current breakeven is ${breakevenText}. In simulator mode it is ${simulatedBreakevenText} versus ICE, using ${activeOwnership.label}.`;
+    }
+
+    if (lower.includes("emission") || lower.includes("co2") || lower.includes("ghg")) {
+      return `For ${vehicle}, retrofit avoids ${emissions} lifecycle CO2e versus ICE at Year ${horizon}. Lifecycle emissions = manufacturing at Year 0 + operating emissions over time.`;
+    }
+
+    if (lower.includes("how") || lower.includes("formula") || lower.includes("calculate")) {
+      return "Use the methodology view for formulas. Core logic is purchase price + annual operating cost × years for cost, and manufacturing + annual operating emissions × years for lifecycle CO2e.";
+    }
+
+    if (lower.includes("cost") || lower.includes("saving") || lower.includes("win") || lower.includes("pathway")) {
+      return `${currentBest} currently leads. Retrofit is ${retrofitCost}; ICE is ${iceCost}; retrofit difference versus ICE is ${savings} over ${horizon} years.`;
+    }
+
+    if (lower.includes("client") || lower.includes("recommend") || lower.includes("investor") || lower.includes("government")) {
+      return `Lead with cost, breakeven, emissions avoided, and funding potential. For ${vehicle}, ${currentBest} leads now; retrofit difference versus ICE is ${savings}; lifecycle CO2e avoided is ${emissions}.`;
+    }
+
+    return `${vehicle}, Year ${horizon}: ${currentBest} leads. Retrofit is ${retrofitCost}; ICE is ${iceCost}; difference is ${savings}; emissions avoided are ${emissions}.`;
+  };
+
+  const askAssistant = (presetQuestion) => {
+    const question = (presetQuestion || assistantQuestion).trim();
+    if (!question) return;
+    const answer = buildAssistantAnswer(question);
+    setAssistantMessages((current) => [...current, { role: "user", text: question }, { role: "assistant", text: answer }]);
+    setAssistantQuestion("");
+    setAssistantOpen(true);
+  };
+
+  const renderAssistantDock = () => (
+    <motion.aside className={assistantOpen ? "ai-command-dock open" : "ai-command-dock"} initial={false} animate={{ y: assistantOpen ? 0 : 12, opacity: assistantOpen ? 1 : 0.96 }} transition={{ duration: 0.22 }}>
+      <button className="ai-command-trigger" type="button" onClick={() => setAssistantOpen((current) => !current)} aria-expanded={assistantOpen} aria-label={assistantOpen ? "Close Ask BlueForce" : "Open Ask BlueForce"} title="Ask BlueForce">
+        <span className="ai-command-orb" aria-hidden="true" />
+      </button>
+      {assistantOpen && (
+        <div className="ai-command-panel">
+          <div className="ai-command-head">
+            <button type="button" onClick={() => setAssistantOpen(false)} aria-label="Close AI assistant"><X size={16} /></button>
+          </div>
+          <div className={assistantMessages.length ? "ai-message-list" : "ai-message-list empty"}>
+            {!assistantMessages.length && <div className="ai-message-empty">Ask a question.</div>}
+            {assistantMessages.slice(-6).map((message, index) => (
+              <div key={`${message.role}-${index}-${message.text.slice(0, 12)}`} className={`ai-message ${message.role}`}>
+                <p>{message.text}</p>
+              </div>
+            ))}
+          </div>
+          <form className="ai-question-form" onSubmit={(event) => { event.preventDefault(); askAssistant(); }}>
+            <MessageCircle size={16} />
+            <input value={assistantQuestion} onChange={(event) => setAssistantQuestion(event.target.value)} placeholder="Ask a question" />
+            <button type="submit" aria-label="Ask question"><SendHorizontal size={16} /></button>
+          </form>
+        </div>
+      )}
+    </motion.aside>
+  );
+
   const renderOverview = () => (
     <>
-      <PageHeader title="Executive overview" />
-      <section className="yana-kpi-grid">
-        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("comparison")}><span>Best {horizon}-Year Option</span><strong>{best?.type || "Pending"}</strong><small>{currency(best?.tunedCost)} total cost</small></button>
+      <motion.section className="executive-brief-card cinematic-hero" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+        <div>
+          <span>BCIT Capstone · BlueForce Energy</span>
+          <h2>Retrofit Transition Decision Platform</h2>
+          <p>Executive decision support for choosing whether to keep ICE/diesel, buy OEM EV, or retrofit fleet vehicles.</p>
+          <div className="hero-signal-row" aria-label="Decision platform signals">
+            <b>Lifecycle cost</b>
+            <b>Emissions</b>
+            <b>Breakeven</b>
+            <b>Funding potential</b>
+          </div>
+        </div>
+        <div className="executive-brief-actions">
+          <button type="button" onClick={() => goToView("simulator")}>Start simulation</button>
+          <button type="button" onClick={() => goToView("comparison")}>Compare vehicles</button>
+        </div>
+      </motion.section>
+      <motion.section className="ai-briefing-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}>
+        <div className="ai-pulse" aria-hidden="true" />
+        <div>
+          <span>AI briefing</span>
+          <strong>{retrofitWins ? `${vehicle} retrofit is the current financial lead.` : `${best?.type || "Review"} currently leads under these assumptions.`}</strong>
+          <p>{retrofitWins ? `${currency(activeSavingsVsIce)} lower than ICE over ${horizon} years, with ${tonnes(emissionsAvoidedVsIce)} lifecycle CO2e avoided.` : `Review ownership mode, vehicle price assumption, and sponsor-validated maintenance before final recommendation.`}</p>
+        </div>
+        <button type="button" onClick={() => setAssistantOpen(true)}>Ask the model</button>
+      </motion.section>
+      <motion.section className="yana-kpi-grid executive-kpis" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.14 }}>
+        <button className="yana-kpi-card" type="button" onClick={() => goToView("comparison")}><span>Best {horizon}-Year Option</span><strong>{best?.type || "Pending"}</strong><small>{currency(best?.tunedCost)} total cost</small></button>
         <button className="yana-kpi-card" type="button" onClick={() => setDetailOpen("savings")}><span>{horizon}-Year Difference</span><strong>{currency(activeSavingsVsIce)}</strong><small>Retrofit vs ICE</small></button>
-        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("carbon")}><span>Emissions Reduced</span><strong>{tonnes(emissionsAvoidedVsIce)}</strong><small>Lifecycle CO2e</small></button>
-        <button className="yana-kpi-card" type="button" onClick={() => setActiveView("breakeven")}><span>Breakeven Year</span><strong>{breakevenText}</strong><small>$0 confirmed incentive</small></button>
-      </section>
-      <section className="yana-main-grid">
+        <button className="yana-kpi-card" type="button" onClick={() => goToView("carbon")}><span>Emissions Reduced</span><strong>{tonnes(emissionsAvoidedVsIce)}</strong><small>Lifecycle CO2e</small></button>
+        <button className="yana-kpi-card" type="button" onClick={() => goToView("breakeven")}><span>Breakeven Year</span><strong>{breakevenText}</strong><small>$0 confirmed incentive</small></button>
+      </motion.section>
+      <section className="yana-main-grid executive-main-grid">
         <article className="yana-card yana-chart-card">
           <div className="yana-card-head"><div><span>Lifecycle Cost Comparison</span><h3>{vehicle} pathways, year 0 to 10</h3></div><p>Hover the curve to inspect cost at each year.</p></div>
           <ResponsiveContainer width="100%" height={330}>
@@ -2264,12 +2726,12 @@ function App() {
             </LineChart>
           </ResponsiveContainer>
         </article>
-        <aside className="yana-card yana-recommendation">
+        <aside className="yana-card yana-recommendation executive-recommendation">
           <span>Recommended Pathway</span>
           <h3>{retrofitWins ? "BlueForce Retrofit" : best?.type || "Review"}</h3>
           <p>{retrofitWins ? `Lowest ${horizon}-year cost for ${vehicle}, with ${currency(activeSavingsVsIce)} savings versus ICE.` : `Current assumptions favor ${best?.type}. Retrofit is ${currency(Math.abs(activeSavingsVsIce))} ${activeSavingsVsIce < 0 ? "higher" : "lower"} than ICE.`}</p>
           <p>{tonnes(emissionsAvoidedVsIce)} lifecycle CO2e avoided versus ICE.</p>
-          <button type="button" onClick={() => setActiveView("methodology")}>View assumptions</button>
+          <button type="button" onClick={() => goToView("methodology")}>View assumptions</button>
         </aside>
       </section>
     </>
@@ -2296,6 +2758,8 @@ function App() {
             <span><b>{currency(simulatedSavings)}</b> difference vs ICE</span>
             <span><b>{simulatedBreakevenText}</b> breakeven vs ICE</span>
             <span><b>{annual(simulatedRetrofit?.annualMaintenance || 0)}</b> maintenance</span>
+            <span className="metric-explainer"><b>{annual(annualFuelSavingsVsGas)}</b> gas fuel savings<span className="metric-popover">Annual gasoline savings = ICE annual fuel cost minus retrofit electricity cost at the selected annual km and fuel/electricity multipliers.</span></span>
+            {simulatedDiesel && <span className="metric-explainer"><b>{annual(annualFuelSavingsVsDiesel)}</b> diesel fuel savings<span className="metric-popover">Annual diesel savings = diesel annual fuel cost minus retrofit electricity cost at the selected annual km and fuel/electricity multipliers.</span></span>}
             <span><b>{tonnes(simulatedRetrofit?.lifecycleEmissions || 0)}</b> lifecycle CO2e</span>
           </div>
           <ResponsiveContainer width="100%" height={315}>
@@ -2337,15 +2801,16 @@ function App() {
       <PageHeader title="Vehicle comparison" kicker="Three pathways, same truck class." />
       <section className="yana-comparison-grid">
         {comparisonCards.map((row) => (
-          <article key={row.model} className={`yana-path-card ${row.type === best?.type ? "best" : ""} ${row.type === selectedType ? "selected" : ""}`} onClick={() => setSelectedType(row.type)}>
+          <article key={row.model} className={`yana-path-card path-${row.type.toLowerCase().replace(/[^a-z0-9]+/g, "-")} ${row.type === best?.type ? "best" : ""} ${row.type === selectedType ? "selected" : ""}`} onClick={() => setSelectedType(row.type)}>
             <span>{row.type === "Retrofit" ? "BlueForce Retrofit" : row.type}</span>
             <h3>{row.model}</h3>
             <InteractiveVehicleViewer type={row.type} family={vehicle} />
             <dl>
               <div><dt>Purchase price</dt><dd>{currency(row.purchase_price)}</dd></div>
-              <div><dt>Annual maintenance</dt><dd>{annual(row.annualMaintenance)}</dd></div>
+              <div className="metric-explainer"><dt>Annual maintenance <Info size={13} /></dt><dd>{annual(row.annualMaintenance)}</dd><span className="metric-popover">Estimated as {annualKm.toLocaleString()} km/year × {currency(row.maintenancePerKm)}/km. This is a benchmark planning estimate, not a confirmed BlueForce service quote. Validate tires, inspections, repairs, battery service, and duty-cycle assumptions with the sponsor.</span></div>
               <div><dt>Annual operating</dt><dd>{annual(row.annual_operating_cost)}</dd></div>
               <div><dt>{horizon}-year lifecycle cost</dt><dd>{currency(costAt(row, horizon))}</dd></div>
+              <div className="metric-explainer"><dt>Savings vs ICE/gas <Info size={13} /></dt><dd className={row.savingsVsIce >= 0 ? "positive-metric" : "negative-metric"}>{currency(row.savingsVsIce)}</dd><span className="metric-popover">Formula: ICE/gas cumulative cost minus this pathway cumulative cost at Year {horizon}. Positive means this option is cheaper than the ICE/gas baseline; negative means it costs more under current assumptions.</span></div>
               <div><dt>Lifecycle emissions</dt><dd>{tonnes(lifecycleEmissionsAt(row, horizon))}</dd></div>
             </dl>
             <p>{row.type === "Retrofit" ? `${row.bestUse}. ${activeOwnership.help}` : row.bestUse}</p>
@@ -2426,11 +2891,46 @@ function App() {
   const renderCarbon = () => (
     <>
       <PageHeader title="Carbon impact" kicker="Funding and ESG view. Credits stay separate from lifecycle cost." />
-      <section className="yana-kpi-grid compact">
+      <section className="yana-kpi-grid compact carbon-credit-kpis">
         <article className="yana-kpi-card"><span>CO2e reduced</span><strong>{tonnes(emissionsAvoidedVsIce)}</strong><small>Lifecycle basis at Year {horizon}</small></article>
-        <article className="yana-kpi-card"><span>Emissions breakeven</span><strong>{emissionsBreakevenText}</strong><small>Adjusted retrofit vs ICE</small></article>
-        <article className="yana-kpi-card"><span>Carbon credit value</span><strong>{currency(storyCarbonValue)}</strong><small>Separate from lifecycle cost</small></article>
-        <article className="yana-kpi-card"><span>Funding signal</span><strong>Useful</strong><small>Validate credit ownership</small></article>
+        <article className="yana-kpi-card"><span>BC LCFS potential</span><strong>{currency(storyCarbonValue)}</strong><small>{storyCarbonKm.toLocaleString()} km/year, model export</small></article>
+        <article className="yana-kpi-card"><span>Federal CFR sensitivity</span><strong>{currency(federalCfrPotentialValue)}</strong><small>$350/t CO2e, unconfirmed market reference</small></article>
+        <article className="yana-kpi-card"><span>Combined potential</span><strong>{currency(combinedCreditPotentialValue)}</strong><small>Separate from vehicle lifecycle cost</small></article>
+      </section>
+      <section className="carbon-credit-stack">
+        <article className="yana-card yana-chart-card">
+          <div className="yana-card-head">
+            <div><span>Credit potential</span><h3>BC LCFS + Federal CFR sensitivity</h3></div>
+            <p>Shown as funding potential only. It does not reduce total lifecycle cost.</p>
+          </div>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={[
+              { label: "BC LCFS", value: storyCarbonValue },
+              { label: "Federal CFR", value: federalCfrPotentialValue },
+              { label: "Combined", value: combinedCreditPotentialValue },
+            ]} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="#E5E7EB" />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="#6B7280" />
+              <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
+              <Tooltip content={<GlassTooltip formatter={currency} note="BC LCFS comes from the model export. Federal CFR is estimated as lifecycle CO2e avoided × CAD $350/t sensitivity." />} />
+              <Bar dataKey="value" name="Potential credit value" radius={[12, 12, 0, 0]}>
+                <Cell fill="#2563EB" />
+                <Cell fill="#10B981" />
+                <Cell fill="#111827" />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </article>
+        <article className="yana-card carbon-method-card">
+          <span>Method</span>
+          <h3>Keep credits separate until ownership is validated.</h3>
+          <dl>
+            <div><dt>BC LCFS</dt><dd>Model export based on eligible EV charging electricity, kWh use, credit rate, annual km, and fixed base credit price.</dd></div>
+            <div><dt>Federal CFR</dt><dd>Simple sensitivity: lifecycle CO2e avoided vs ICE × CAD $350/t. Market price and eligibility are not fixed.</dd></div>
+            <div><dt>Combined</dt><dd>BC LCFS potential + Federal CFR sensitivity. Not added into lifecycle cost or breakeven.</dd></div>
+          </dl>
+          <p>{FEDERAL_CFR_NOTE}</p>
+        </article>
       </section>
       <section className="carbon-chart-grid">
         <article className="yana-card yana-chart-card"><div className="yana-card-head"><div><span>Lifecycle emissions</span><h3>Manufacturing + operating emissions</h3></div><p>Year 0 starts with manufacturing emissions. Operating emissions add over time.</p></div><ResponsiveContainer width="100%" height={330}><BarChart data={emissionsChart}><CartesianGrid vertical={false} stroke="#E5E7EB" /><XAxis dataKey="type" tickLine={false} axisLine={false} stroke="#6B7280" /><YAxis tickFormatter={(value) => `${value}t`} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} /><Tooltip content={<GlassTooltip formatter={(value) => tonnes(value)} note="Lifecycle emissions = manufacturing emissions + operating emissions through the selected year." />} /><Legend /><Bar dataKey="manufacturing" name="Manufacturing" stackId="a" fill="#9CA3AF" /><Bar dataKey="operating" name="Operating" stackId="a" fill="#2563EB" /></BarChart></ResponsiveContainer></article>
@@ -2515,6 +3015,137 @@ function App() {
     );
   };
 
+  const renderPolicy = () => {
+    const bcLinks = EV_POLICY_LINKS.filter((item) => item.jurisdiction === "BC");
+    const federalLinks = EV_POLICY_LINKS.filter((item) => item.jurisdiction === "Canada");
+    return (
+      <>
+        <PageHeader title="EV policy and benefits" kicker="Official BC and federal sources only." />
+        <section className="policy-hero-grid">
+          <article className="yana-card policy-summary-card">
+            <span>Why this matters</span>
+            <h3>Use verified government sources before quoting incentives.</h3>
+            <p>EV rebates, charger funding, and credit rules change. This page keeps the decision platform connected to official BC and federal pages instead of informal estimates.</p>
+          </article>
+          <article className="yana-card policy-check-card">
+            <span>Client use</span>
+            <ul>
+              <li>Check current rebate eligibility.</li>
+              <li>Validate charging support for workplaces and fleets.</li>
+              <li>Keep carbon credits separate from lifecycle cost.</li>
+            </ul>
+          </article>
+        </section>
+        <section className="policy-source-grid">
+          <article className="yana-card policy-column">
+            <div className="policy-column-head"><span>British Columbia</span><strong>Provincial programs</strong></div>
+            {bcLinks.map((item) => <PolicySourceCard key={item.title} item={item} />)}
+          </article>
+          <article className="yana-card policy-column">
+            <div className="policy-column-head"><span>Canada</span><strong>Federal programs</strong></div>
+            {federalLinks.map((item) => <PolicySourceCard key={item.title} item={item} />)}
+          </article>
+        </section>
+        <section className="yana-card policy-note-card">
+          <Info size={17} />
+          <p>Do not treat listed incentives as guaranteed. Use these links to verify the exact vehicle class, buyer type, funding availability, stacking rules, and application timing before presenting a client recommendation.</p>
+        </section>
+      </>
+    );
+  };
+
+  const renderDataMap = () => {
+    const activeNode = selectedDataNode || DATA_MAP_NODES[0];
+    const sourceNodes = DATA_MAP_NODES.filter((node) => node.type === "source");
+    const center = 300;
+    const outerRadius = 232;
+    const layerRadius = 124;
+    const sourceAngles = [-90, -48, -12, 30, 74, 116, 158, 204, 252];
+    const pointFor = (angle, radius) => {
+      const radians = angle * Math.PI / 180;
+      return { x: center + Math.cos(radians) * radius, y: center + Math.sin(radians) * radius };
+    };
+    const labelAnchor = (x) => x < center - 28 ? "start" : x > center + 28 ? "end" : "middle";
+    const labelOffset = (x) => x < center - 28 ? 24 : x > center + 28 ? -24 : 0;
+    const placedSources = sourceNodes.map((node, index) => {
+      const point = pointFor(sourceAngles[index] ?? ((360 / sourceNodes.length) * index), outerRadius);
+      return {
+        ...node,
+        ...point,
+        anchor: labelAnchor(point.x),
+        labelX: point.x + labelOffset(point.x),
+        labelY: point.y + (point.y < center - 175 ? (point.x < center - 40 ? 28 : -18) : point.y > center + 175 ? (point.x < center - 40 ? -18 : 24) : 4),
+      };
+    });
+    const placedLayers = DATA_MAP_LAYERS.map((layer) => ({ ...layer, ...pointFor(layer.angle, layerRadius) }));
+
+    return (
+      <>
+        <PageHeader title="Data source map" kicker="Demo test view: how evidence flows into the model." />
+        <section className="data-map-shell">
+          <article className="yana-card data-map-card">
+            <div className="data-map-stage spatial" aria-label="Interactive data source mapping diagram" style={{ "--map-tilt": `${dataMapTilt}deg`, "--map-depth": `${dataMapDepth}px`, "--map-drift": `${dataMapDrift}px` }}>
+              <svg viewBox="0 0 600 600" role="img" aria-label="Sources connected to model layers and dashboard outputs">
+                <defs>
+                  <radialGradient id="dataCoreGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#FFFFFF" />
+                    <stop offset="100%" stopColor="#DCE6ED" />
+                  </radialGradient>
+                </defs>
+                <circle cx={center} cy={center} r="240" className="data-orbit" />
+                <circle cx={center} cy={center} r="134" className="data-inner-orbit" />
+                {placedSources.map((node, index) => {
+                  const layer = placedLayers[index % placedLayers.length];
+                  return <path key={node.id} className={activeNode.id === node.id ? "data-link active" : "data-link"} d={`M ${node.x} ${node.y} Q ${center} ${center} ${layer.x} ${layer.y}`} />;
+                })}
+                {placedLayers.map((layer) => (
+                  <g key={layer.id} className="data-layer-node">
+                    <line x1={center} y1={center} x2={layer.x} y2={layer.y} className="data-core-link" />
+                    <circle cx={layer.x} cy={layer.y} r="22" />
+                    <text x={layer.x} y={layer.y + 42}>{layer.label}</text>
+                  </g>
+                ))}
+                <g className="data-core-node">
+                  <circle cx={center} cy={center} r="70" fill="url(#dataCoreGlow)" />
+                  <Database x={center - 16} y={center - 30} size={32} />
+                  <text x={center} y={center + 18}>Forecasting</text>
+                  <text x={center} y={center + 38}>model</text>
+                </g>
+                {placedSources.map((node) => (
+                  <g key={node.id} className={activeNode.id === node.id ? "data-source-node active" : "data-source-node"} onClick={() => setSelectedDataNode(node)} onMouseEnter={() => setSelectedDataNode(node)} tabIndex="0" role="button" aria-label={node.label}>
+                    <circle className="data-hit" cx={node.x} cy={node.y} r="30" />
+                    <circle cx={node.x} cy={node.y} r="14" />
+                    <text x={node.labelX} y={node.labelY} textAnchor={node.anchor}>{node.shortLabel || node.label}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+            <div className="data-map-controls" aria-label="Spatial data map controls">
+              <ControlSlider label="Tilt" value={dataMapTilt} min={-24} max={24} step={1} format={(value) => `${Math.round(value)}°`} onChange={setDataMapTilt} />
+              <ControlSlider label="Depth" value={dataMapDepth} min={-40} max={40} step={1} format={(value) => `${Math.round(value)} px`} onChange={setDataMapDepth} />
+              <ControlSlider label="Orbit" value={dataMapDrift} min={-60} max={60} step={1} format={(value) => `${Math.round(value)} px`} onChange={setDataMapDrift} />
+            </div>
+          </article>
+          <aside className="yana-card data-map-detail">
+            <span>{activeNode.category}</span>
+            <h3>{activeNode.label}</h3>
+            <p>{activeNode.summary}</p>
+            <div className="data-map-route"><span>Source</span><b>→</b><span>Model</span><b>→</b><span>Dashboard</span></div>
+            <div className="data-feed-list">
+              {activeNode.feeds.map((feed) => <button key={feed} type="button">{feed}</button>)}
+            </div>
+            <div className="data-map-flow">
+              <div><b>1</b><span>Collect</span></div>
+              <div><b>2</b><span>Transform</span></div>
+              <div><b>3</b><span>Forecast</span></div>
+              <div><b>4</b><span>Explain</span></div>
+            </div>
+          </aside>
+        </section>
+      </>
+    );
+  };
+
   const renderMethodology = () => (
     <>
       <PageHeader title="Methodology" kicker="Assumptions and formulas in one clean place." />
@@ -2553,7 +3184,9 @@ function App() {
     scenario: renderScenario,
     breakeven: renderBreakeven,
     carbon: renderCarbon,
+    policy: renderPolicy,
     "ev-network": renderEVNetwork,
+    "data-map": renderDataMap,
     methodology: renderMethodology,
   };
 
@@ -2580,14 +3213,46 @@ function App() {
     setIsUnlocked(false);
   };
 
+  const handleToggleSound = () => {
+    setSoundOn((current) => {
+      const next = !current;
+      window.localStorage.setItem("blueforce-demo-sound", next ? "on" : "off");
+      return next;
+    });
+  };
+
+  const handleThemeChange = (themeId) => {
+    setVisualTheme(themeId);
+    window.localStorage.setItem("blueforce-visual-theme", themeId);
+  };
+
   return (
     <>
-      <main className={isUnlocked ? "yana-app-shell" : "yana-app-shell app-locked-behind"} aria-hidden={!isUnlocked}>
+      <div className={`device-preview-root device-preview-${devicePreview} theme-${visualTheme}`}>
+        {isUnlocked && (
+          <div className="device-preview-switch" role="radiogroup" aria-label="Preview viewport">
+            {DEVICE_PREVIEW_MODES.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                className={devicePreview === id ? "active" : ""}
+                onClick={() => setDevicePreview(id)}
+                aria-pressed={devicePreview === id}
+                title={`Switch to ${label.toLowerCase()} view`}
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="device-preview-frame">
+          <main className={isUnlocked ? "yana-app-shell" : "yana-app-shell app-locked-behind"} aria-hidden={!isUnlocked}>
       <aside className="yana-sidebar" aria-label="Primary navigation">
         <div className="yana-sidebar-logo"><img src="/assets/logos/blueforce-logo.png" alt="BlueForce Energy" /></div>
         <nav>
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" className={activeView === id ? "active" : ""} onClick={() => setActiveView(id)}>
+            <button key={id} type="button" className={activeView === id ? "active" : ""} onClick={() => goToView(id)}>
               <Icon size={18} />
               <span>{label}</span>
             </button>
@@ -2601,20 +3266,54 @@ function App() {
       <section className="yana-workspace">
         <header className="yana-topbar compact-topbar">
           <div className={ownershipMode === "full" ? "yana-filter-row full-top-controls new-car-active" : "yana-filter-row full-top-controls"}>
-            <select value={vehicle} onChange={(event) => setVehicle(event.target.value)} aria-label="Vehicle model">{VEHICLES.map((item) => <option key={item}>{item}</option>)}</select>
+            <select value={vehicle} onChange={(event) => setVehicle(event.target.value)} aria-label="Vehicle model">
+              {VEHICLES.map((item) => <option key={item}>{item}</option>)}
+              <option value="additional-cars" disabled>Additional cars · Premium</option>
+            </select>
             <div className="top-year-control">
               <ControlSlider label="Year" value={horizon} min={0} max={10} step={1} format={(value) => `Year ${Math.round(value)}`} onChange={(value) => setHorizon(value)} />
             </div>
             <div className="top-mode-toggle" role="radiogroup" aria-label="Retrofit purchase mode">
               {OWNERSHIP_MODES.map((mode) => (
-                <button key={mode.id} type="button" className={ownershipMode === mode.id ? "active" : ""} onClick={() => setOwnershipMode(mode.id)}>{mode.label}</button>
+                <button key={mode.id} type="button" className={ownershipMode === mode.id ? "active" : ""} onClick={() => { setOwnershipMode(mode.id); if (mode.id === "full") setNewCarPercent(50); }}>{mode.label}</button>
               ))}
             </div>
             {ownershipMode === "full" && (
               <div className="top-percent-control">
-                <ControlSlider label="New car price" value={newCarPercent} min={10} max={100} step={10} format={(value) => `${Math.round(value)}%`} onChange={(value) => setNewCarPercent(value)} />
+                <ControlSlider label="New car price" value={newCarPercent} min={1} max={100} step={1} format={(value) => `${Math.round(value)}%`} onChange={(value) => setNewCarPercent(value)} />
               </div>
             )}
+            <div className="theme-mode-toggle" role="radiogroup" aria-label="Visual theme">
+              {VISUAL_THEME_OPTIONS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={visualTheme === id ? "active" : ""}
+                  onClick={() => handleThemeChange(id)}
+                  aria-pressed={visualTheme === id}
+                  title={`${label} theme`}
+                >
+                  <Icon size={15} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="top-data-mode-toggle" role="radiogroup" aria-label="Data connection mode">
+              <button type="button" className={dataMode === "snapshot" ? "active" : ""} onClick={() => setDataMode("snapshot")} title="Uses the exported scenario-data.json model snapshot.">
+                Snapshot
+              </button>
+              <button type="button" className="locked-live" disabled title="Premium live data connection concept: connected sheets, market prices, and government data feeds.">
+                Live <LockKeyhole size={12} />
+              </button>
+            </div>
+            <button className="topbar-team-button" type="button" onClick={() => setDetailOpen("team")} title="Open team information">
+              <Users size={15} />
+              <span>Team</span>
+            </button>
+            <button className={soundOn ? "topbar-sound-button active" : "topbar-sound-button"} type="button" onClick={handleToggleSound} aria-pressed={soundOn} title={soundOn ? "Turn interface sound off" : "Turn interface sound on"}>
+              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              <span>{soundOn ? "Sound" : "Muted"}</span>
+            </button>
             <button className="topbar-lock-button" type="button" onClick={handleLockApp} title="Lock app and return to sign in">
               <LogOut size={15} />
               <span>Lock</span>
@@ -2625,10 +3324,32 @@ function App() {
           <div><p>{today}</p><h1>Retrofit Transition Decision Platform</h1></div>
           <span>{selectedPage.label}</span>
         </div>
-        <section className="yana-page">{(pageContent[activeView] || renderOverview)()}</section>
+        <div className="yana-page-carousel" ref={pageCarouselRef} onWheelCapture={handleCarouselWheel} onScroll={syncActiveViewFromCarousel} aria-label="Decision platform pages">
+          {navItems.map((item) => {
+            const renderPage = pageContent[item.id] || renderOverview;
+            return (
+              <section
+                key={item.id}
+                className={`yana-page-panel ${activeView === item.id ? "active" : ""}`}
+                data-view-id={item.id}
+                ref={(node) => {
+                  if (node) pagePanelRefs.current[item.id] = node;
+                }}
+                aria-hidden={activeView !== item.id}
+              >
+                <div className="yana-page-panel-scroll">
+                  <section className="yana-page">{renderPage()}</section>
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </section>
+        {renderAssistantDock()}
         <LayerDrawer detail={detailOpen ? detailContent[detailOpen] : null} onClose={() => setDetailOpen(null)} />
-      </main>
+          </main>
+        </div>
+      </div>
       {!isUnlocked && (
         <LoginWall
           loginCode={loginCode}
@@ -2708,6 +3429,20 @@ function LoginWall({ loginCode, loginError, isUnlocking, onCodeChange, onSubmit 
     </main>
   );
 }
+
+function PolicySourceCard({ item }) {
+  return (
+    <a className="policy-source-card" href={item.url} target="_blank" rel="noreferrer">
+      <div>
+        <span>{item.tag}</span>
+        <h4>{item.title}</h4>
+        <p>{item.summary}</p>
+      </div>
+      <small>{item.whyItMatters}</small>
+    </a>
+  );
+}
+
 
 function GlassTooltip({ active, payload, label, formatter, note }) {
   if (!active || !payload?.length) return null;

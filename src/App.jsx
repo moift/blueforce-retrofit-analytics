@@ -52,7 +52,6 @@ import {
   X,
   Zap,
   Search,
-  FileText,
   SendHorizontal,
   MessageCircle,
   Sun,
@@ -175,7 +174,6 @@ const navItems = [
   { id: "policy", label: "EV Policy", icon: ShieldCheck },
   { id: "ev-network", label: "EV Network", icon: MapPin },
   { id: "data-map", label: "Data Map", icon: GitBranch },
-  { id: "methodology", label: "Methodology", icon: FileText },
 ];
 
 const EV_POLICY_LINKS = [
@@ -246,12 +244,12 @@ const DATA_MAP_NODES = [
   { id: "nrcan", label: "NRCan fuel ratings", shortLabel: "NRCan", type: "source", category: "Public data", summary: "Fuel and energy consumption reference data for comparable ICE, diesel, and EV pathways.", feeds: ["L/100km", "kWh/100km", "Fuel cost logic"] },
   { id: "bc-hydro", label: "BC Hydro rates", shortLabel: "BC Hydro", type: "source", category: "Utility data", summary: "Electricity rate assumptions used to estimate EV and retrofit charging cost.", feeds: ["$/kWh", "Electricity multiplier", "Operating cost"] },
   { id: "fuel-history", label: "Fuel price history", shortLabel: "Fuel prices", type: "source", category: "Market data", summary: "Gasoline and diesel price assumptions used for base case and sensitivity analysis.", feeds: ["$/L", "Fuel multiplier", "Scenario analysis"] },
-  { id: "maintenance", label: "Maintenance benchmarks", shortLabel: "Maintenance", type: "source", category: "Methodology", summary: "Cost-per-kilometre maintenance estimates for ICE, diesel, EV, and retrofit pathways.", feeds: ["CAD/km", "Annual maintenance", "Lifecycle cost"] },
+  { id: "maintenance", label: "Maintenance benchmarks", shortLabel: "Maintenance", type: "source", category: "Benchmarks", summary: "Cost-per-kilometre maintenance estimates for ICE, diesel, EV, and retrofit pathways.", feeds: ["CAD/km", "Annual maintenance", "Lifecycle cost"] },
   { id: "emissions", label: "Emissions factors", shortLabel: "Emissions", type: "source", category: "Environmental", summary: "Operating and manufacturing emissions assumptions used for lifecycle CO2e calculations.", feeds: ["kg CO2e/L", "kg CO2e/kWh", "Manufacturing CO2e"] },
   { id: "lcfs", label: "Carbon credit assumptions", shortLabel: "Carbon credits", type: "source", category: "Funding", summary: "BC credit value assumptions shown separately from lifecycle cost until ownership is validated.", feeds: ["Credit value", "kWh use", "Funding signal"] },
   { id: "ev-network-source", label: "BC charging network", shortLabel: "Chargers", type: "source", category: "Infrastructure", summary: "EV station coverage and connector data used for the infrastructure discussion view.", feeds: ["Station count", "Connectors", "Fleet readiness"] },
   { id: "python", label: "Python forecasting model", type: "process", category: "Model", summary: "Transforms source data into cost, emissions, breakeven, scenario, and carbon outputs.", feeds: ["3/5/10 year forecast", "Scenario tables", "Breakeven outputs"] },
-  { id: "dashboard", label: "Decision platform", type: "output", category: "App", summary: "Client-facing interface for exploring vehicle pathways, assumptions, infrastructure, and recommendations.", feeds: ["Executive KPIs", "Charts", "Methodology", "Client story"] },
+  { id: "dashboard", label: "Decision platform", type: "output", category: "App", summary: "Client-facing interface for exploring vehicle pathways, assumptions, infrastructure, and recommendations.", feeds: ["Executive KPIs", "Charts", "Explainers", "Client story"] },
 ];
 
 const DATA_MAP_LAYERS = [
@@ -676,41 +674,41 @@ const PROJECT_TEAM = [
   {
     name: "Saad",
     role: "App Development & Data Analyst",
-    focus: "Product direction, interface design, model integration, and data workflow.",
+    focus: "Application architecture, interface design, data integration, and client-facing product decisions.",
     tone: "male",
-    photo: "/assets/saad-portrait-source.jpeg",
-    photoPosition: "center 22%",
-    photoScale: 1.08,
+    photo: "/assets/team-saad.jpeg",
+    photoPosition: "center center",
+    photoScale: 1,
   },
   {
     name: "Ross",
     role: "Data Modelling & Research Analyst",
-    focus: "Forecast logic, scenario design, and research validation.",
+    focus: "Scenario modelling, forecasting logic, financial framing, and research validation.",
     tone: "male-alt",
-    photo: "/assets/ross-portrait-source.jpeg",
-    photoPosition: "center 24%",
-    photoScale: 1.12,
+    photo: "/assets/team-ross.jpeg",
+    photoPosition: "center center",
+    photoScale: 1,
   },
   {
     name: "Ocean",
-    role: "QA & Data Analyst",
-    focus: "Quality assurance, dataset review, and documentation control.",
+    role: "QA, Data Review & Documentation",
+    focus: "Quality assurance, dataset verification, documentation control, and delivery support.",
     tone: "female",
-    photo: "/assets/ocean-portrait-source.jpeg",
-    photoPosition: "center 20%",
-    photoScale: 1.1,
+    photo: "/assets/team-ocean.jpeg",
+    photoPosition: "center center",
+    photoScale: 1,
   },
 ];
 
 const PROJECT_NETWORK_GROUPS = [
   {
     id: "students",
-    title: "Student team",
+    title: "Core team",
     members: PROJECT_TEAM,
   },
   {
     id: "blueforce",
-    title: "BlueForce support",
+    title: "BlueForce",
     compact: true,
     members: [
       {
@@ -720,7 +718,7 @@ const PROJECT_NETWORK_GROUPS = [
   },
   {
     id: "bcit",
-    title: "BCIT support",
+    title: "BCIT",
     compact: true,
     members: [
       {
@@ -1829,9 +1827,6 @@ function App() {
   const [stationCity, setStationCity] = useState("All");
   const [selectedStation, setSelectedStation] = useState(GREATER_VANCOUVER_STATIONS[0]);
   const [selectedDataNode, setSelectedDataNode] = useState(DATA_MAP_NODES[0]);
-  const [dataMapTilt, setDataMapTilt] = useState(0);
-  const [dataMapDepth, setDataMapDepth] = useState(0);
-  const [dataMapDrift, setDataMapDrift] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(() => window.localStorage.getItem("blueforce-demo-unlocked") === "true");
   const [soundOn, setSoundOn] = useState(() => window.localStorage.getItem("blueforce-demo-sound") !== "off");
   const [dataMode, setDataMode] = useState("snapshot");
@@ -1861,6 +1856,7 @@ function App() {
   const carouselNavLockRef = useRef(false);
   const carouselNavReleaseRef = useRef(null);
   const carouselWheelReleaseRef = useRef(null);
+  const carouselGestureLockRef = useRef(false);
 
   usePremiumInteractionFeedback(isUnlocked && soundOn);
   useLiquidPointerEffect();
@@ -1918,32 +1914,38 @@ function App() {
   const handleCarouselWheel = React.useCallback((event) => {
     const carousel = pageCarouselRef.current;
     if (!carousel) return;
-    const horizontalDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) * 1.15
+    const horizontalDelta = Math.abs(event.deltaX) > 2
       ? event.deltaX
-      : event.shiftKey
+      : event.shiftKey && Math.abs(event.deltaY) > 2
         ? event.deltaY
         : 0;
     if (!horizontalDelta) return;
     event.preventDefault();
+    carouselGestureLockRef.current = true;
+    carouselNavLockRef.current = true;
     carousel.style.scrollSnapType = "none";
     carousel.style.scrollBehavior = "auto";
     carousel.scrollLeft += horizontalDelta;
     window.clearTimeout(carouselWheelReleaseRef.current);
     carouselWheelReleaseRef.current = window.setTimeout(() => {
       const nearestView = getNearestCarouselView();
+      carouselGestureLockRef.current = false;
       carousel.style.scrollSnapType = "";
       carousel.style.scrollBehavior = "";
       if (nearestView) {
         setActiveView(nearestView);
         scrollToView(nearestView, "smooth");
+      } else {
+        releaseCarouselNavLock();
       }
-    }, 110);
-  }, [getNearestCarouselView, scrollToView]);
+    }, 220);
+  }, [getNearestCarouselView, releaseCarouselNavLock, scrollToView]);
 
   useEffect(
     () => () => {
       window.clearTimeout(carouselNavReleaseRef.current);
       window.clearTimeout(carouselWheelReleaseRef.current);
+      carouselGestureLockRef.current = false;
     },
     [],
   );
@@ -1956,7 +1958,7 @@ function App() {
 
   const syncActiveViewFromCarousel = React.useCallback(() => {
     const carousel = pageCarouselRef.current;
-    if (!carousel || carouselNavLockRef.current) return;
+    if (!carousel || carouselNavLockRef.current || carouselGestureLockRef.current) return;
     const nearestId = getNearestCarouselView();
     if (!nearestId) return;
     if (nearestId !== activeViewRef.current) {
@@ -2387,9 +2389,9 @@ function App() {
       ],
     },
     team: {
-      title: "Team",
-      body: "",
-      takeaway: "",
+      title: "Project team",
+      body: "Capstone delivery team responsible for the model, interface, and validation workflow.",
+      takeaway: "Student cards show the core delivery team. Support names are listed separately below.",
       networkGroups: PROJECT_NETWORK_GROUPS,
       facts: [],
     }
@@ -2599,7 +2601,7 @@ function App() {
     const currentPage = selectedPage.label;
 
     if (lower.includes("team") || lower.includes("who built") || lower.includes("who made")) {
-      return "Student team: Saad, Ross, and Ocean. BlueForce support: Nataliia Vladyka. BCIT support: Alan Stewart and Clay Howey.";
+      return "Core team: Saad, Ross, and Ocean. BlueForce: Nataliia Vladyka. BCIT support: Alan Stewart and Clay Howey.";
     }
 
     if (lower.includes("what am i seeing") || lower.includes("current page") || lower.includes("this page")) {
@@ -2627,7 +2629,7 @@ function App() {
     }
 
     if (lower.includes("how") || lower.includes("formula") || lower.includes("calculate")) {
-      return "Use the methodology view for formulas. Core logic is purchase price + annual operating cost × years for cost, and manufacturing + annual operating emissions × years for lifecycle CO2e.";
+      return "Core logic: lifecycle cost = purchase price + annual operating cost × years. Lifecycle CO2e = manufacturing CO2e at Year 0 + annual operating CO2e × years. Use the inline info markers on the relevant cards for context.";
     }
 
     if (lower.includes("cost") || lower.includes("saving") || lower.includes("win") || lower.includes("pathway")) {
@@ -2731,7 +2733,7 @@ function App() {
           <h3>{retrofitWins ? "BlueForce Retrofit" : best?.type || "Review"}</h3>
           <p>{retrofitWins ? `Lowest ${horizon}-year cost for ${vehicle}, with ${currency(activeSavingsVsIce)} savings versus ICE.` : `Current assumptions favor ${best?.type}. Retrofit is ${currency(Math.abs(activeSavingsVsIce))} ${activeSavingsVsIce < 0 ? "higher" : "lower"} than ICE.`}</p>
           <p>{tonnes(emissionsAvoidedVsIce)} lifecycle CO2e avoided versus ICE.</p>
-          <button type="button" onClick={() => goToView("methodology")}>View assumptions</button>
+          <button type="button" onClick={() => setDetailOpen("cost")}>View cost logic</button>
         </aside>
       </section>
     </>
@@ -3084,7 +3086,7 @@ function App() {
         <PageHeader title="Data source map" kicker="Demo test view: how evidence flows into the model." />
         <section className="data-map-shell">
           <article className="yana-card data-map-card">
-            <div className="data-map-stage spatial" aria-label="Interactive data source mapping diagram" style={{ "--map-tilt": `${dataMapTilt}deg`, "--map-depth": `${dataMapDepth}px`, "--map-drift": `${dataMapDrift}px` }}>
+            <div className="data-map-stage spatial" aria-label="Interactive data source mapping diagram">
               <svg viewBox="0 0 600 600" role="img" aria-label="Sources connected to model layers and dashboard outputs">
                 <defs>
                   <radialGradient id="dataCoreGlow" cx="50%" cy="50%" r="50%">
@@ -3120,11 +3122,6 @@ function App() {
                 ))}
               </svg>
             </div>
-            <div className="data-map-controls" aria-label="Spatial data map controls">
-              <ControlSlider label="Tilt" value={dataMapTilt} min={-24} max={24} step={1} format={(value) => `${Math.round(value)}°`} onChange={setDataMapTilt} />
-              <ControlSlider label="Depth" value={dataMapDepth} min={-40} max={40} step={1} format={(value) => `${Math.round(value)} px`} onChange={setDataMapDepth} />
-              <ControlSlider label="Orbit" value={dataMapDrift} min={-60} max={60} step={1} format={(value) => `${Math.round(value)} px`} onChange={setDataMapDrift} />
-            </div>
           </article>
           <aside className="yana-card data-map-detail">
             <span>{activeNode.category}</span>
@@ -3146,37 +3143,6 @@ function App() {
     );
   };
 
-  const renderMethodology = () => (
-    <>
-      <PageHeader title="Methodology" kicker="Assumptions and formulas in one clean place." />
-      <section className="method-flow-strip">
-        {[
-          ["1", "Inputs", "Vehicle price, km/year, fuel/electricity, maintenance, emissions"],
-          ["2", "Pathways", "ICE/diesel, OEM EV, and BlueForce retrofit"],
-          ["3", "Forecast", "Year 0 to Year 10 lifecycle cost and emissions"],
-          ["4", "Decision", "Lowest cost, emissions avoided, breakeven, funding signal"],
-        ].map(([step, title, copy]) => (
-          <article key={step} className="method-step-card">
-            <b>{step}</b>
-            <strong>{title}</strong>
-            <small>{copy}</small>
-          </article>
-        ))}
-      </section>
-      <section className="methodology-clean-grid">
-        <article className="yana-card method-card"><span>Lifecycle cost</span><p>Purchase price plus annual operating cost for the selected number of years.</p><code>Cost = purchase price + annual operating cost × years</code></article>
-        <article className="yana-card method-card"><span>Retrofit purchase mode</span><p>Service uses retrofit price only. Used car adds 50% of matching ICE purchase price and 100% of matching ICE manufacturing emissions. New car adds 100% of matching ICE purchase price and 100% of matching ICE manufacturing emissions.</p></article>
-        <article className="yana-card method-card"><span>Maintenance</span><p>Maintenance is estimated from a cost-per-kilometre rate, then multiplied by annual kilometres.</p><code>Annual maintenance = km/year × maintenance cost per km</code></article>
-        <article className="yana-card method-card"><span>Emissions</span><p>Lifecycle emissions start at manufacturing emissions in Year 0, then add operating emissions each year.</p><code>Lifecycle CO2e = manufacturing CO2e + annual operating CO2e × years</code></article>
-        <article className="yana-card method-card"><span>Carbon credits</span><p>Carbon credits are shown separately from total lifecycle cost. The model estimates eligible EV charging value from kWh use, credit rate, and annual kilometres.</p></article>
-      </section>
-      <section className="yana-card method-disclaimer-card">
-        <span>Client validation note</span>
-        <p>Vehicle-cost modes are assumptions for discussion, not confirmed BlueForce pricing. The final model should confirm donor vehicle ownership, battery details, LCFS credit ownership, and maintenance split before client recommendations.</p>
-      </section>
-    </>
-  );
-
   const pageContent = {
     overview: renderOverview,
     simulator: renderSimulator,
@@ -3187,7 +3153,6 @@ function App() {
     policy: renderPolicy,
     "ev-network": renderEVNetwork,
     "data-map": renderDataMap,
-    methodology: renderMethodology,
   };
 
   const handleLoginSubmit = (event) => {

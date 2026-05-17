@@ -16751,7 +16751,7 @@ body,
   min-height: 0 !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  scroll-snap-type: x mandatory !important;
+  scroll-snap-type: x proximity !important;
   scroll-behavior: smooth !important;
   overscroll-behavior-x: contain !important;
   scrollbar-width: none !important;
@@ -16770,7 +16770,7 @@ body,
   min-height: 0 !important;
   overflow: hidden !important;
   scroll-snap-align: start !important;
-  scroll-snap-stop: always !important;
+  scroll-snap-stop: normal !important;
   opacity: 0.94 !important;
   transition: opacity 220ms ease, transform 220ms ease !important;
 }
@@ -17275,4 +17275,111 @@ body,
 
 .device-preview-desktop .topbar-sound-button {
   margin-left: 0 !important;
+}
+
+
+/* 2026-05-16 team panel polish */
+.layer-drawer.team-drawer {
+  width: min(920px, calc(100vw - 28px)) !important;
+}
+
+.layer-drawer.team-drawer h2 {
+  margin-bottom: 6px !important;
+}
+
+.layer-drawer.team-drawer > p {
+  max-width: 58ch !important;
+  color: #AAB7C8 !important;
+}
+
+.layer-drawer.team-drawer .team-showcase-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.layer-drawer.team-drawer .team-avatar-card {
+  min-height: 292px !important;
+  padding: 18px !important;
+  border-radius: 28px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05)) !important;
+}
+
+.layer-drawer.team-drawer .team-face-orb {
+  width: 96px !important;
+  height: 96px !important;
+  margin-bottom: 16px !important;
+  border-radius: 28px !important;
+  box-shadow: 0 14px 30px rgba(2,6,23,.18) !important;
+}
+
+.layer-drawer.team-drawer .team-avatar-card strong {
+  margin-top: 0 !important;
+  font-size: 1.18rem !important;
+  letter-spacing: -.02em !important;
+}
+
+.layer-drawer.team-drawer .team-avatar-card small {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: auto !important;
+  margin-top: 8px !important;
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.07) !important;
+  border: 1px solid rgba(148,163,184,.16) !important;
+  color: #D7E0EC !important;
+  font-size: .77rem !important;
+  font-weight: 760 !important;
+  line-height: 1.2 !important;
+}
+
+.layer-drawer.team-drawer .team-avatar-card p {
+  margin-top: 12px !important;
+  max-width: 27ch !important;
+  color: #B8C4D4 !important;
+  font-size: .84rem !important;
+  line-height: 1.5 !important;
+}
+
+.layer-drawer.team-drawer .team-contact-row {
+  margin-top: auto !important;
+  padding-top: 14px !important;
+  gap: 10px !important;
+}
+
+.layer-drawer.team-drawer .team-contact-row span {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(148,163,184,.12) !important;
+}
+
+.layer-drawer.team-drawer .team-support-grid {
+  gap: 8px !important;
+}
+
+.layer-drawer.team-drawer .team-support-card {
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  background: rgba(255,255,255,.04) !important;
+}
+
+.layer-drawer.team-drawer .team-support-card strong {
+  font-size: .82rem !important;
+  font-weight: 680 !important;
+  color: #CBD5E1 !important;
+}
+
+@media (max-width: 980px) {
+  .layer-drawer.team-drawer .team-showcase-grid {
+    grid-template-columns: 1fr !important;
+  }
 }

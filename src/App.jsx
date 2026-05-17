@@ -2604,7 +2604,7 @@ function App() {
     const currentPage = selectedPage.label;
 
     if (lower.includes("team") || lower.includes("who built") || lower.includes("who made")) {
-      return "Core team: Saad, Ross, and Ocean. BlueForce: Nataliia Vladyka. BCIT support: Alan Stewart and Clay Howey.";
+      return "Core team: Saad, Ross, and Ocean. BlueForce: Nataliia Vladyka and Vandad. BCIT: Carrie, Alan Stewart, and Clay Howey. Capstone faculty: Arman Roland and Linda Butterfield.";
     }
 
     if (lower.includes("what am i seeing") || lower.includes("current page") || lower.includes("this page")) {

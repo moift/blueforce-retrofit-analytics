@@ -674,11 +674,12 @@ const PROJECT_TEAM = [
   {
     name: "Saad",
     role: "App Development & Data Analyst",
-    focus: "Application architecture, interface design, data integration, and client-facing product decisions.",
+    focus: "Application architecture, interface design, data integration, and client-facing product direction.",
     tone: "male",
     photo: "/assets/team-saad.jpeg",
     photoPosition: "center center",
     photoScale: 1,
+    featured: true,
   },
   {
     name: "Ross",
@@ -711,9 +712,8 @@ const PROJECT_NETWORK_GROUPS = [
     title: "BlueForce",
     compact: true,
     members: [
-      {
-        name: "Nataliia Vladyka",
-      },
+      { name: "Nataliia Vladyka" },
+      { name: "Vandad" },
     ],
   },
   {
@@ -721,12 +721,18 @@ const PROJECT_NETWORK_GROUPS = [
     title: "BCIT",
     compact: true,
     members: [
-      {
-        name: "Alan Stewart",
-      },
-      {
-        name: "Clay Howey",
-      },
+      { name: "Carrie" },
+      { name: "Alan Stewart" },
+      { name: "Clay Howey" },
+    ],
+  },
+  {
+    id: "faculty",
+    title: "Capstone faculty",
+    compact: true,
+    members: [
+      { name: "Arman Roland" },
+      { name: "Linda Butterfield" },
     ],
   },
 ];
@@ -1174,17 +1180,14 @@ function LayerDrawer({ detail, onClose }) {
               <section key={group.id} className={`team-network-section ${group.compact ? "compact" : ""}`}>
                 <span>{group.title}</span>
                 {group.compact ? (
-                  <div className="team-support-grid">
-                    {group.members.map((member) => (
-                      <article key={`${group.id}-${member.name}`} className="team-support-card">
-                        <strong>{member.name}</strong>
-                      </article>
-                    ))}
+                  <div className="team-support-line" aria-label={`${group.title} support`}>
+                    <strong>{group.title}</strong>
+                    <span>{group.members.map((member) => member.name).join(", ")}</span>
                   </div>
                 ) : (
                   <div className="team-showcase-grid">
                     {group.members.map((member) => (
-                      <article key={`${group.id}-${member.name}`} className={`team-avatar-card tone-${member.tone || "neutral"}`}>
+                      <article key={`${group.id}-${member.name}`} className={`team-avatar-card ${member.featured ? "featured" : ""} tone-${member.tone || "neutral"}`}>
                         <TeamAvatar member={member} />
                         <strong>{member.name}</strong>
                         <small>{member.role}</small>
@@ -2390,8 +2393,8 @@ function App() {
     },
     team: {
       title: "Project team",
-      body: "Capstone delivery team responsible for the model, interface, and validation workflow.",
-      takeaway: "Student cards show the core delivery team. Support names are listed separately below.",
+      body: "Core delivery team for the retrofit decision model, interface, and validation workflow.",
+      takeaway: "Student cards show the primary builders. BlueForce, BCIT, and faculty support are listed below as concise references.",
       networkGroups: PROJECT_NETWORK_GROUPS,
       facts: [],
     }

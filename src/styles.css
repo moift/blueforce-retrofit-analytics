@@ -17383,3 +17383,76 @@ body,
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* 2026-05-16 team section refinement */
+.layer-drawer.team-drawer .team-avatar-card.featured {
+  border-color: rgba(96,165,250,.26) !important;
+  background: linear-gradient(180deg, rgba(37,99,235,.16), rgba(255,255,255,.05)) !important;
+  box-shadow: 0 22px 48px rgba(2,6,23,.26) !important;
+}
+
+.layer-drawer.team-drawer .team-face-orb.has-photo {
+  position: relative !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(148,163,184,.10)) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  overflow: hidden !important;
+}
+
+.layer-drawer.team-drawer .team-face-orb.has-photo::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  border-radius: inherit !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0)) !important;
+  z-index: 2 !important;
+}
+
+.layer-drawer.team-drawer .team-face-orb.has-photo img {
+  filter: saturate(1.04) contrast(1.02) !important;
+  animation: teamPortraitFloat 6s ease-in-out infinite !important;
+}
+
+.layer-drawer.team-drawer .team-avatar-card:nth-child(2) .team-face-orb.has-photo img {
+  animation-delay: .45s !important;
+}
+
+.layer-drawer.team-drawer .team-avatar-card:nth-child(3) .team-face-orb.has-photo img {
+  animation-delay: .9s !important;
+}
+
+.team-support-line {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 42px !important;
+  padding: 10px 14px !important;
+  border-radius: 16px !important;
+  background: rgba(255,255,255,.04) !important;
+  border: 1px solid rgba(148,163,184,.14) !important;
+}
+
+.team-support-line strong {
+  color: #E5EDF8 !important;
+  font-size: .76rem !important;
+  font-weight: 820 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+.team-support-line span {
+  color: #B8C4D4 !important;
+  font-size: .88rem !important;
+  line-height: 1.45 !important;
+}
+
+.layer-drawer.team-drawer .team-network-section.compact > span {
+  display: none !important;
+}
+
+@keyframes teamPortraitFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.012); }
+}

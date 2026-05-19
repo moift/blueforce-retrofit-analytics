@@ -696,7 +696,7 @@ const PROJECT_TEAM = [
     tone: "male-alt",
     photo: teamRossPhoto,
     photoPosition: "center 12%",
-    photoScale: 1,
+    photoScale: 1.1,
   },
   {
     name: "Ocean",

@@ -682,7 +682,7 @@ const PROJECT_TEAM = [
     focus: "Application architecture, interface design, data integration, and client-facing product direction.",
     tone: "male",
     photo: teamSaadPhoto,
-    photoPosition: "center center",
+    photoPosition: "center 18%",
     photoScale: 1,
     featured: true,
     links: {
@@ -695,7 +695,7 @@ const PROJECT_TEAM = [
     focus: "Scenario modelling, forecasting logic, financial framing, and research validation.",
     tone: "male-alt",
     photo: teamRossPhoto,
-    photoPosition: "center center",
+    photoPosition: "center 12%",
     photoScale: 1,
   },
   {
@@ -704,7 +704,7 @@ const PROJECT_TEAM = [
     focus: "Quality assurance, dataset verification, documentation control, and delivery support.",
     tone: "female",
     photo: teamOceanPhoto,
-    photoPosition: "center center",
+    photoPosition: "center 18%",
     photoScale: 1,
   },
 ];

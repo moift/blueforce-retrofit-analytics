@@ -26,6 +26,7 @@ import {
   CircleDollarSign,
   Gauge,
   GitBranch,
+  Github,
   Home,
   Info,
   Leaf,
@@ -57,6 +58,10 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+
+import teamSaadPhoto from "../assets/team-saad.jpeg";
+import teamRossPhoto from "../assets/team-ross.jpeg";
+import teamOceanPhoto from "../assets/team-ocean.jpeg";
 
 const SCENARIOS = {
   base: {
@@ -676,17 +681,20 @@ const PROJECT_TEAM = [
     role: "App Development & Data Analyst",
     focus: "Application architecture, interface design, data integration, and client-facing product direction.",
     tone: "male",
-    photo: "/assets/team-saad.jpeg",
+    photo: teamSaadPhoto,
     photoPosition: "center center",
     photoScale: 1,
     featured: true,
+    links: {
+      github: "https://github.com/moift/blueforce-retrofit-analytics",
+    },
   },
   {
     name: "Ross",
     role: "Data Modelling & Research Analyst",
     focus: "Scenario modelling, forecasting logic, financial framing, and research validation.",
     tone: "male-alt",
-    photo: "/assets/team-ross.jpeg",
+    photo: teamRossPhoto,
     photoPosition: "center center",
     photoScale: 1,
   },
@@ -695,7 +703,7 @@ const PROJECT_TEAM = [
     role: "QA, Data Review & Documentation",
     focus: "Quality assurance, dataset verification, documentation control, and delivery support.",
     tone: "female",
-    photo: "/assets/team-ocean.jpeg",
+    photo: teamOceanPhoto,
     photoPosition: "center center",
     photoScale: 1,
   },
@@ -721,7 +729,6 @@ const PROJECT_NETWORK_GROUPS = [
     title: "BCIT",
     compact: true,
     members: [
-      { name: "Carrie" },
       { name: "Alan Stewart" },
       { name: "Clay Howey" },
     ],
@@ -1192,10 +1199,11 @@ function LayerDrawer({ detail, onClose }) {
                         <strong>{member.name}</strong>
                         <small>{member.role}</small>
                         {member.focus && <p>{member.focus}</p>}
-                        <div className="team-contact-row" aria-label={`${member.name} contact placeholders`}>
-                          <span title="LinkedIn placeholder"><Linkedin size={13} /></span>
-                          <span title="Email placeholder"><Mail size={13} /></span>
-                          <span title="Phone placeholder"><Phone size={13} /></span>
+                        <div className="team-contact-row" aria-label={`${member.name} contact links`}>
+                          {member.links?.linkedin ? <a href={member.links.linkedin} target="_blank" rel="noreferrer" title={`${member.name} LinkedIn`}><Linkedin size={13} /></a> : <span title="LinkedIn not added yet"><Linkedin size={13} /></span>}
+                          {member.links?.email ? <a href={`mailto:${member.links.email}`} title={`${member.name} email`}><Mail size={13} /></a> : <span title="Email not added yet"><Mail size={13} /></span>}
+                          {member.links?.phone ? <a href={`tel:${member.links.phone}`} title={`${member.name} phone`}><Phone size={13} /></a> : <span title="Phone not added yet"><Phone size={13} /></span>}
+                          {member.links?.github ? <a href={member.links.github} target="_blank" rel="noreferrer" title={`${member.name} GitHub`}><Github size={13} /></a> : null}
                         </div>
                       </article>
                     ))}
@@ -1213,10 +1221,11 @@ function LayerDrawer({ detail, onClose }) {
                 <strong>{member.name}</strong>
                 <small>{member.role}</small>
                 {member.focus && <p>{member.focus}</p>}
-                <div className="team-contact-row" aria-label={`${member.name} contact placeholders`}>
-                  <span title="LinkedIn placeholder"><Linkedin size={13} /></span>
-                  <span title="Email placeholder"><Mail size={13} /></span>
-                  <span title="Phone placeholder"><Phone size={13} /></span>
+                <div className="team-contact-row" aria-label={`${member.name} contact links`}>
+                  {member.links?.linkedin ? <a href={member.links.linkedin} target="_blank" rel="noreferrer" title={`${member.name} LinkedIn`}><Linkedin size={13} /></a> : <span title="LinkedIn not added yet"><Linkedin size={13} /></span>}
+                  {member.links?.email ? <a href={`mailto:${member.links.email}`} title={`${member.name} email`}><Mail size={13} /></a> : <span title="Email not added yet"><Mail size={13} /></span>}
+                  {member.links?.phone ? <a href={`tel:${member.links.phone}`} title={`${member.name} phone`}><Phone size={13} /></a> : <span title="Phone not added yet"><Phone size={13} /></span>}
+                  {member.links?.github ? <a href={member.links.github} target="_blank" rel="noreferrer" title={`${member.name} GitHub`}><Github size={13} /></a> : null}
                 </div>
               </article>
             ))}
@@ -2394,7 +2403,7 @@ function App() {
     team: {
       title: "Project team",
       body: "Core delivery team for the retrofit decision model, interface, and validation workflow.",
-      takeaway: "Student cards show the primary builders. BlueForce, BCIT, and faculty support are listed below as concise references.",
+      takeaway: "",
       networkGroups: PROJECT_NETWORK_GROUPS,
       facts: [],
     }
@@ -2613,7 +2622,7 @@ function App() {
     const currentPage = selectedPage.label;
 
     if (lower.includes("team") || lower.includes("who built") || lower.includes("who made")) {
-      return "Core team: Saad, Ross, and Ocean. BlueForce: Nataliia Vladyka and Vandad. BCIT: Carrie, Alan Stewart, and Clay Howey. Capstone faculty: Arman Roland and Linda Butterfield.";
+      return "Core team: Saad, Ross, and Ocean. BlueForce: Nataliia Vladyka and Vandad. BCIT: Alan Stewart and Clay Howey. Capstone faculty: Arman Roland and Linda Butterfield.";
     }
 
     if (lower.includes("what am i seeing") || lower.includes("current page") || lower.includes("this page")) {

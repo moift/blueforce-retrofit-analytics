@@ -17456,3 +17456,29 @@ body,
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-4px) scale(1.012); }
 }
+
+/* 2026-05-18 team drawer left alignment cleanup */
+.layer-drawer.team-drawer,
+.layer-drawer.team-drawer h2,
+.layer-drawer.team-drawer > p,
+.layer-drawer.team-drawer .eyebrow,
+.layer-drawer.team-drawer .team-network-section,
+.layer-drawer.team-drawer .team-avatar-card,
+.layer-drawer.team-drawer .team-avatar-card strong,
+.layer-drawer.team-drawer .team-avatar-card small,
+.layer-drawer.team-drawer .team-avatar-card p,
+.layer-drawer.team-drawer .team-contact-row,
+.layer-drawer.team-drawer .team-support-line,
+.layer-drawer.team-drawer .team-support-line strong,
+.layer-drawer.team-drawer .team-support-line span {
+  text-align: left !important;
+}
+
+.layer-drawer.team-drawer .team-network-sections,
+.layer-drawer.team-drawer .team-showcase-grid {
+  justify-items: stretch !important;
+}
+
+.layer-drawer.team-drawer .team-support-line {
+  justify-content: flex-start !important;
+}

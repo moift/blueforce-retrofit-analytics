@@ -2465,16 +2465,25 @@ function App() {
     : (() => {
         const values = scenarioValuesFor(data, activeScenarioTab);
         const source = data?.[scenarioTabConfig.sheet] || [];
-        const modelRows = source.filter((row) => row.model === selectedRow.model);
         return values.map((value) => {
-          const match = modelRows.find((row) => Number(row.year) === horizon && Number(row[scenarioTabConfig.parameter]) === Number(value));
-          const baseValue = Number(value) === 0 && scenarioHasZeroBaseline(activeScenarioTab)
-            ? scenarioZeroBaselineValue(activeScenarioTab, selectedRow)
-            : Number(match?.[scenarioTabConfig.metric] || 0);
-          return {
+          const item = {
             label: scenarioSeriesLabel(scenarioTabConfig.parameter, value, scenarioTabConfig),
-            value: baseValue + (match ? scenarioOwnershipCostAdjustment(selectedRow, activeScenarioTab, value) : 0),
           };
+          rows.forEach((row) => {
+            const modelRows = source.filter((sourceRow) => sourceRow.model === row.model);
+            const match = modelRows.find(
+              (sourceRow) =>
+                Number(sourceRow.year) === horizon
+                && Number(sourceRow[scenarioTabConfig.parameter]) === Number(value),
+            );
+            const baseValue = Number(value) === 0 && scenarioHasZeroBaseline(activeScenarioTab)
+              ? scenarioZeroBaselineValue(activeScenarioTab, row)
+              : Number(match?.[scenarioTabConfig.metric] || 0);
+            item[row.type] = baseValue == null
+              ? null
+              : baseValue + (match ? scenarioOwnershipCostAdjustment(row, activeScenarioTab, value) : 0);
+          });
+          return item;
         });
       })();
   const scenarioContext = {
@@ -2835,7 +2844,7 @@ function App() {
         <article className="yana-card scenario-note compact"><span>{scenarioStats.deltaLabel}</span><strong>{scenarioStats.delta}</strong><p>{scenarioContext[activeScenarioTab]?.method}</p></article>
       </section>
       <section className="yana-card yana-chart-card">
-        <div className="yana-card-head"><div><span>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.label}</span><h3>{selectedRow.type} sensitivity</h3></div><p>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.insight}</p></div>
+        <div className="yana-card-head"><div><span>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.label}</span><h3>{vehicle} pathway sensitivity</h3></div><p>{scenarioTabs.find((tab) => tab.id === activeScenarioTab)?.insight}</p></div>
         <ResponsiveContainer width="100%" height={380}>
           {activeScenarioTab === "emissions" ? (
             <BarChart data={scenarioTabChart} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
@@ -2853,7 +2862,22 @@ function App() {
               <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="#6B7280" />
               <YAxis tickFormatter={compactMoney} tickLine={false} axisLine={false} stroke="#6B7280" domain={[0, "auto"]} />
               <Tooltip content={<GlassTooltip formatter={currency} note={scenarioContext[activeScenarioTab]?.method} />} />
-              <Line type="monotone" dataKey="value" name={`${horizon}-year cost`} stroke={linePalette[selectedRow.type] || "#2563EB"} strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 7 }} isAnimationActive animationDuration={260} />
+              <Legend />
+              {rows.map((row) => (
+                <Line
+                  key={row.type}
+                  type="monotone"
+                  dataKey={row.type}
+                  name={row.type}
+                  stroke={linePalette[row.type] || "#9CA3AF"}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  connectNulls
+                  isAnimationActive
+                  animationDuration={260}
+                />
+              ))}
             </LineChart>
           )}
         </ResponsiveContainer>
